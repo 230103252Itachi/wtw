@@ -1,0 +1,128 @@
+// lib/screens/view_item_screen.dart
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:wtw/models/wardrobe_item.dart';
+import 'package:wtw/models/wardrobe_model.dart';
+
+class ViewItemScreen extends StatelessWidget {
+  final String? imagePathArg;
+  final WardrobeItem? itemArg;
+
+  const ViewItemScreen({Key? key, this.imagePathArg, this.itemArg})
+    : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    // получить аргумент из route если не передан в конструкторе
+    final routeArg = ModalRoute.of(context)?.settings.arguments;
+    WardrobeItem? item = itemArg;
+    String? imagePath = imagePathArg;
+
+    if (routeArg != null) {
+      if (routeArg is WardrobeItem) {
+        item = routeArg;
+        imagePath = routeArg.imagePath;
+      } else if (routeArg is String) {
+        imagePath = routeArg;
+      }
+    }
+
+    imagePath ??= ''; // пустая строка по умолчанию
+
+    final wardrobe = Provider.of<WardrobeModel?>(context);
+
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
+        actions: [
+          if (wardrobe != null && item != null)
+            IconButton(
+              icon: const Icon(Icons.delete_forever, color: Colors.white),
+              onPressed: () async {
+                final ok = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('Удалить вещь?'),
+                    content: const Text('Эта вещь будет удалена из гардероба.'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(false),
+                        child: const Text('Отмена'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(true),
+                        child: const Text('Удалить'),
+                      ),
+                    ],
+                  ),
+                );
+                if (ok == true) {
+                  await wardrobe.removeItem(item!);
+                  if (Navigator.canPop(context)) Navigator.pop(context);
+                }
+              },
+            ),
+        ],
+      ),
+      body: SafeArea(
+        child: Center(
+          child: imagePath.isEmpty
+              ? _buildNotFound()
+              : Hero(
+                  tag: imagePath,
+                  child: InteractiveViewer(
+                    panEnabled: true,
+                    minScale: 0.5,
+                    maxScale: 4.0,
+                    child: FutureBuilder<bool>(
+                      future: File(imagePath).exists(),
+                      builder: (ctx, snap) {
+                        if (snap.connectionState != ConnectionState.done) {
+                          return const SizedBox(
+                            width: 80,
+                            height: 80,
+                            child: CircularProgressIndicator(),
+                          );
+                        }
+                        final exists = snap.data == true;
+                        if (exists) {
+                          return Image.file(
+                            File(imagePath!),
+                            fit: BoxFit.contain,
+                            errorBuilder: (c, e, st) => _buildNotFound(),
+                          );
+                        }
+                        return _buildNotFound(
+                          message: 'Изображение не найдено\nПуть: $imagePath',
+                        );
+                      },
+                    ),
+                  ),
+                ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNotFound({String? message}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.broken_image, size: 80, color: Colors.white24),
+          const SizedBox(height: 12),
+          Text(
+            message ?? 'Изображение не найдено',
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.white54),
+          ),
+        ],
+      ),
+    );
+  }
+}
