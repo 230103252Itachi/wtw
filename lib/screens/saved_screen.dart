@@ -17,6 +17,7 @@ class SavedScreen extends StatelessWidget {
     final saved = wardrobe.saved;
 
     return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text(
           'Saved Outfits',
@@ -25,9 +26,7 @@ class SavedScreen extends StatelessWidget {
             fontWeight: FontWeight.bold,
           ),
         ),
-        backgroundColor: Colors.white,
         elevation: 1,
-        foregroundColor: const Color(0xFF4B4CFF),
       ),
       body: Padding(
         padding: const EdgeInsets.all(12.0),

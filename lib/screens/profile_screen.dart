@@ -26,7 +26,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final TextEditingController _userController = TextEditingController();
   final TextEditingController _passController = TextEditingController();
 
-  bool _compactList = false;
+  bool _darkMode = false;
 
   @override
   void initState() {
@@ -42,7 +42,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await Hive.openBox('settings');
       final box = Hive.box('settings');
       setState(() {
-        _compactList = box.get('compactList', defaultValue: false) as bool;
+        _darkMode = box.get('darkMode', defaultValue: false) as bool;
       });
     } catch (_) {}
   }
@@ -188,14 +188,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  Future<void> _toggleCompact(bool v) async {
+  Future<void> _toggleDarkMode(bool v) async {
     setState(() {
-      _compactList = v;
+      _darkMode = v;
     });
     try {
       await Hive.openBox('settings');
       final box = Hive.box('settings');
-      await box.put('compactList', v);
+      await box.put('darkMode', v);
     } catch (_) {}
   }
 
@@ -210,6 +210,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text(
           'Account',
@@ -218,9 +219,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        backgroundColor: Colors.white,
         elevation: 1,
-        foregroundColor: const Color(0xFF4B4CFF),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -240,22 +239,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  CheckboxListTile(
-                    title: const Text('Compact List'),
-                    value: _compactList,
+                  SwitchListTile(
+                    title: const Text('Dark Mode'),
+                    value: _darkMode,
                     onChanged: (v) {
-                      if (v != null) _toggleCompact(v);
+                      _toggleDarkMode(v);
                     },
                   ),
-                  const SizedBox(height: 24),
-                  ElevatedButton.icon(
-                    onPressed: _clearData,
-                    icon: const Icon(Icons.delete_forever),
-                    label: const Text('Clear All Data'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.redAccent,
-                    ),
-                  ),
+
                 ],
               ),
             ),

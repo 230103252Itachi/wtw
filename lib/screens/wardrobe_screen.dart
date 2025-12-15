@@ -35,13 +35,19 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
     categories.addAll(wardrobe.items.map((e) => e.title).toSet());
 
     return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Wardrobe'),
-        foregroundColor: const Color(0xFF4B4CFF),
+        title: const Text(
+          'Wardrobe',
+          style: TextStyle(
+            color: Color(0xFF4B4CFF),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         elevation: 1,
         actions: [
           IconButton(
-            icon: const Icon(Icons.search, color: Color(0xFF4B4CFF)),
+            icon: const Icon(Icons.search),
             onPressed: () {
               _showSearchDialog();
             },
@@ -264,10 +270,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(16),
                 ),
-                child: Container(
-                  color: Colors.grey[100],
-                  child: item.imageWidget,
-                ),
+                child: item.imageWidget,
               ),
             ),
             Padding(

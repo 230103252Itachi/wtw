@@ -63,10 +63,24 @@ class WhatToWearApp extends StatelessWidget {
               brightness: Brightness.dark,
               scaffoldBackgroundColor: Colors.black,
               primaryColor: const Color(0xFF4B4CFF),
+              primarySwatch: Colors.indigo,
+              useMaterial3: true,
               appBarTheme: const AppBarTheme(
                 backgroundColor: Colors.black,
                 foregroundColor: Colors.white,
                 elevation: 1,
+              ),
+              inputDecorationTheme: InputDecorationTheme(
+                filled: true,
+                fillColor: Colors.grey[900],
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Colors.grey),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Colors.grey),
+                ),
               ),
             ),
             themeMode: darkMode ? ThemeMode.dark : ThemeMode.light,

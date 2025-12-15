@@ -254,17 +254,18 @@ class _HomeScreenState extends State<HomeScreen> {
         width: double.infinity,
         height: 56,
         decoration: BoxDecoration(
-          color: filled ? const Color(0xFF4B4CFF) : Colors.white,
+          color: filled ? const Color(0xFF4B4CFF) : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: filled ? Colors.transparent : const Color(0xFF4B4CFF),
           ),
           boxShadow: [
-            BoxShadow(
-              color: Colors.black12.withOpacity(0.05),
-              blurRadius: 6,
-              offset: const Offset(0, 3),
-            ),
+            if (filled)
+              BoxShadow(
+                color: Colors.black12.withOpacity(0.05),
+                blurRadius: 6,
+                offset: const Offset(0, 3),
+              ),
           ],
         ),
         child: Row(
@@ -446,7 +447,7 @@ class _HomeScreenState extends State<HomeScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).scaffoldBackgroundColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -525,6 +526,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final wardrobe = Provider.of<WardrobeModel>(context);
 
     return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         elevation: 2,
         centerTitle: true,
