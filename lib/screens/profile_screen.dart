@@ -26,7 +26,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final TextEditingController _userController = TextEditingController();
   final TextEditingController _passController = TextEditingController();
 
-  // Preferences
   bool _compactList = false;
 
   @override
@@ -82,7 +81,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (_gender == null) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Пожалуйста, выберите пол')));
+      ).showSnackBar(const SnackBar(content: Text('Please select a gender')));
       return false;
     }
 
@@ -90,7 +89,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     newUsers[username] = {
       'password': _hash(password),
-      'gender': _gender!.name, // male / female
+      'gender': _gender!.name,
     };
 
     await box.put('users', newUsers);
@@ -136,18 +135,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Подтвердите'),
+        title: const Text('Confirm'),
         content: const Text(
-          'Вы уверены, что хотите удалить все вещи и сохранённые образы? Это действие нельзя отменить.',
+          'Are you sure you want to delete all items and saved outfits? This action cannot be undone.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Отмена'),
+            child: const Text('Cancel'),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Удалить', style: TextStyle(color: Colors.red)),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -171,7 +170,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           wardrobe.items.clear();
         } catch (_) {}
         try {
-          // ignore: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
           wardrobe.notifyListeners();
         } catch (_) {}
       }
@@ -179,12 +177,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Данные удалены')));
+      ).showSnackBar(const SnackBar(content: Text('Data deleted')));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Ошибка при удалении: $e')));
+      ).showSnackBar(SnackBar(content: Text('Error deleting data: $e')));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -207,6 +205,61 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _userController.dispose();
     _passController.dispose();
     super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text(
+          'Account',
+          style: TextStyle(
+            color: Color(0xFF4B4CFF),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: Colors.white,
+        elevation: 1,
+        foregroundColor: const Color(0xFF4B4CFF),
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _authSection(),
+                  const SizedBox(height: 24),
+                  const Text(
+                    'Settings',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF4B4CFF),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  CheckboxListTile(
+                    title: const Text('Compact List'),
+                    value: _compactList,
+                    onChanged: (v) {
+                      if (v != null) _toggleCompact(v);
+                    },
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton.icon(
+                    onPressed: _clearData,
+                    icon: const Icon(Icons.delete_forever),
+                    label: const Text('Clear All Data'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.redAccent,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+    );
   }
 
   Widget _authSection() {
@@ -234,7 +287,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Вошли как',
+                      'Logged in as',
                       style: TextStyle(color: Colors.grey[700]),
                     ),
                     Text(
@@ -255,7 +308,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            _gender == Gender.male ? "Мужчина" : "Женщина",
+                            _gender == Gender.male ? "Male" : "Female",
                             style: const TextStyle(
                               fontSize: 14,
                               color: Colors.black54,
@@ -270,7 +323,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               TextButton(
                 onPressed: _logout,
                 child: const Text(
-                  'Выйти',
+                  'Logout',
                   style: TextStyle(color: Color(0xFF4B4CFF)),
                 ),
               ),
@@ -287,7 +340,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         TextField(
           controller: _userController,
           decoration: InputDecoration(
-            labelText: 'Имя пользователя',
+            labelText: 'Username',
             border: const OutlineInputBorder(),
             prefixIcon: const Icon(Icons.person_outline),
           ),
@@ -296,7 +349,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         TextField(
           controller: _passController,
           decoration: InputDecoration(
-            labelText: 'Пароль',
+            labelText: 'Password',
             border: const OutlineInputBorder(),
             prefixIcon: const Icon(Icons.lock_outline),
           ),
@@ -310,7 +363,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _genderButton(
                 gender: Gender.male,
                 selected: _gender,
-                label: "Мужчина",
+                label: "Male",
                 icon: Icons.male,
                 onTap: () => setState(() => _gender = Gender.male),
               ),
@@ -318,7 +371,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _genderButton(
                 gender: Gender.female,
                 selected: _gender,
-                label: "Женщина",
+                label: "Female",
                 icon: Icons.female,
                 onTap: () => setState(() => _gender = Gender.female),
               ),
@@ -335,7 +388,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   final pass = _passController.text;
                   if (user.isEmpty || pass.isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Введите логин и пароль')),
+                      const SnackBar(content: Text('Enter username and password')),
                     );
                     return;
                   }
@@ -345,7 +398,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     if (_isRegister && _gender == null) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                          content: Text('Пожалуйста, выберите пол'),
+                          content: Text('Please select a gender'),
                         ),
                       );
                       return;
@@ -354,7 +407,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       if (!ok && mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('Пользователь уже существует'),
+                            content: Text('User already exists'),
                           ),
                         );
                       }
@@ -364,14 +417,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     if (!ok && mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                          content: Text('Неверные учётные данные'),
+                          content: Text('Invalid credentials'),
                         ),
                       );
                     }
                   }
                   if (mounted) setState(() => _loading = false);
                 },
-                child: Text(_isRegister ? 'Зарегистрироваться' : 'Войти'),
+                child: Text(_isRegister ? 'Register' : 'Login'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF4B4CFF),
                 ),
@@ -384,163 +437,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _isRegister = !_isRegister;
                 });
               },
-              child: Text(_isRegister ? 'Уже есть аккаунт' : 'Регистрация'),
+              child: Text(_isRegister ? 'Already have an account' : 'Register'),
             ),
           ],
         ),
       ],
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Профиль и настройки'),
-        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
-        foregroundColor: Theme.of(context).appBarTheme.foregroundColor,
-        elevation: 1,
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 16),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // AUTH
-                Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(14.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Учётная запись',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 8),
-                        _authSection(),
-                      ],
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 12),
-                Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(14.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Предпочтения',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 8),
-                        SwitchListTile(
-                          value: _compactList,
-                          onChanged: _toggleCompact,
-                          title: const Text('Компактный список'),
-                          subtitle: const Text(
-                            'Показывать более плотный список в гардеробе',
-                          ),
-                          activeColor: const Color(0xFF4B4CFF),
-                        ),
-                        const SizedBox(height: 6),
-                        FutureBuilder(
-                          future: Hive.openBox('settings'),
-                          builder: (context, snap) {
-                            final box = Hive.box('settings');
-                            final dark =
-                                box.get('darkMode', defaultValue: false)
-                                    as bool;
-                            return SwitchListTile(
-                              value: dark,
-                              onChanged: (v) async {
-                                await box.put('darkMode', v);
-                                setState(() {});
-                              },
-                              title: const Text('Тёмная тема'),
-                              subtitle: const Text(
-                                'Включить тёмный режим приложения',
-                              ),
-                              activeColor: const Color(0xFF4B4CFF),
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 8),
-                        ListTile(
-                          leading: const Icon(
-                            Icons.info_outline,
-                            color: Color(0xFF4B4CFF),
-                          ),
-                          title: const Text('О приложении'),
-                          subtitle: const Text('Версия: 1.0.0'),
-                          onTap: () {
-                            showAboutDialog(
-                              context: context,
-                              applicationName: 'WhatToWear',
-                              applicationVersion: '1.0.0',
-                              children: [
-                                const Text('AI-powered wardrobe helper'),
-                              ],
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(14.0),
-                    child: Column(
-                      children: [
-                        ElevatedButton.icon(
-                          onPressed: _loading ? null : _clearData,
-                          icon: const Icon(Icons.delete_forever),
-                          label: const Text('Очистить все данные'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.redAccent,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        TextButton.icon(
-                          onPressed: () {
-                            if (_loggedInUser != null) {
-                              _logout();
-                            } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Вы не вошли')),
-                              );
-                            }
-                          },
-                          icon: const Icon(Icons.logout),
-                          label: const Text('Выйти'),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 

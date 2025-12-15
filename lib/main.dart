@@ -11,10 +11,16 @@ import 'package:wtw/screens/profile_screen.dart';
 import 'package:wtw/models/wardrobe_item.dart';
 import 'package:wtw/services/ai_cache.dart';
 import 'package:wtw/screens/add_item_screen.dart';
+import 'package:wtw/services/openai_key_store.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
+
+  final openaiKey = dotenv.env['OPENAI_API_KEY'];
+  if (openaiKey != null && openaiKey.isNotEmpty) {
+    await OpenAIKeyStore.saveKey(openaiKey);
+  }
 
   await Hive.initFlutter();
   Hive.registerAdapter(WardrobeItemAdapter());
@@ -64,11 +70,10 @@ class WhatToWearApp extends StatelessWidget {
               ),
             ),
             themeMode: darkMode ? ThemeMode.dark : ThemeMode.light,
-            home: const MainTabs(), // <-- use bottom tabs wrapper
+            home: const MainTabs(),
             routes: {
               '/addItem': (ctx) => const AddItemScreen(),
               '/profile': (ctx) => const ProfileScreen(),
-              // add other named routes if you have them
             },
           );
         },
@@ -77,8 +82,6 @@ class WhatToWearApp extends StatelessWidget {
   }
 }
 
-/// MainTabs: Bottom navigation with persistent pages using IndexedStack.
-/// Tabs: Home, Wardrobe, Saved, Profile
 class MainTabs extends StatefulWidget {
   const MainTabs({Key? key}) : super(key: key);
 
@@ -89,11 +92,10 @@ class MainTabs extends StatefulWidget {
 class _MainTabsState extends State<MainTabs> {
   int _currentIndex = 0;
 
-  // Keep pages here. Use your real screens where available.
   final List<Widget> _pages = [
     const HomeScreen(),
     const WardrobeScreen(),
-    const SavedScreen(), // placeholder - you can replace with actual saved screen
+    const SavedScreen(),
     const ProfileScreen(),
   ];
 

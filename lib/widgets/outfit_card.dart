@@ -62,13 +62,13 @@ class OutfitCard extends StatelessWidget {
                 ElevatedButton.icon(
                   onPressed: () => _rate(context, true),
                   icon: const Icon(Icons.thumb_up),
-                  label: const Text('Нравится'),
+                  label: const Text('Like'),
                 ),
                 const SizedBox(width: 8),
                 OutlinedButton.icon(
                   onPressed: () => _rate(context, false),
                   icon: const Icon(Icons.thumb_down),
-                  label: const Text('Не нравится'),
+                  label: const Text('Dislike'),
                 ),
                 const Spacer(),
                 TextButton(onPressed: () {}, child: const Text('Refine')),
@@ -83,7 +83,7 @@ class OutfitCard extends StatelessWidget {
   void _rate(BuildContext context, bool like) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(like ? 'Отмечено: Нравится' : 'Отмечено: Не нравится'),
+        content: Text(like ? 'Marked: Like' : 'Marked: Dislike'),
       ),
     );
   }

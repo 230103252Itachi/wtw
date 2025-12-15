@@ -41,14 +41,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
       if (position == null) {
         setState(() {
-          error = "Не удалось получить местоположение";
+          error = "Unable to get location";
           isLoading = false;
         });
         return;
       }
 
       final weatherService = WeatherService();
-      // Try to get temperature and description via available methods.
       double? temp = await weatherService.getTemperatureByCoords(
         position.latitude,
         position.longitude,
@@ -56,7 +55,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
       String? condition;
       try {
-        // Some implementations may use getWeatherDescription/getWeatherConditionByCoords
         condition = await weatherService.getWeatherDescription(
           position.latitude,
           position.longitude,
@@ -80,7 +78,6 @@ class _HomeScreenState extends State<HomeScreen> {
         // Try to parse from currentSummary fallback
         try {
           final summary = await weatherService.currentSummary();
-          // expected "desc, 15°C" format
           final parts = summary.split(',');
           if (parts.isNotEmpty) {
             condition = parts[0].trim();
@@ -100,14 +97,14 @@ class _HomeScreenState extends State<HomeScreen> {
           });
         } else {
           setState(() {
-            error = "Не удалось получить температуру";
+            error = "Unable to get temperature";
             isLoading = false;
           });
         }
       }
     } catch (e) {
       setState(() {
-        error = "Ошибка: $e";
+        error = "Error: $e";
         isLoading = false;
       });
     }
@@ -139,7 +136,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Flexible(
             child: isLoading
                 ? const Text(
-                    "Загрузка погоды...",
+                    "Loading weather...",
                     style: TextStyle(color: Colors.white, fontSize: 18),
                   )
                 : error != null
@@ -294,14 +291,14 @@ class _HomeScreenState extends State<HomeScreen> {
       children: [
         _roundedButton(
           icon: Icons.auto_awesome,
-          text: 'Сгенерировать образы',
+          text: 'Generate Outfits',
           onTap: () async {
             final wardrobe = Provider.of<WardrobeModel>(context, listen: false);
             final ai = AIStylistService();
 
             if (wardrobe.items.isEmpty) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Гардероб пуст. Добавьте вещи!')),
+                const SnackBar(content: Text('Wardrobe is empty. Add items!')),
               );
               return;
             }
@@ -309,7 +306,6 @@ class _HomeScreenState extends State<HomeScreen> {
             setState(() => isLoading = true);
 
             try {
-              // 1) Собираем описания вещей (AI data)
               List<Map<String, dynamic>> itemsForAI = [];
 
               for (var item in wardrobe.items) {
@@ -319,7 +315,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   itemsForAI.add({
                     'id': item.key.toString(),
                     'path': item.imagePath,
-                    ...cache, // category, material, colors etc
+                    ...cache,
                   });
                 }
               }
@@ -328,29 +324,23 @@ class _HomeScreenState extends State<HomeScreen> {
                 setState(() => isLoading = false);
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text(
-                      'Нет обработанных вещей. Откройте фото, чтобы ИИ дал описание.',
-                    ),
+                    content: Text('No processed items.'),
                   ),
                 );
                 return;
               }
 
-              // 2) Выбранный стиль (casual, formal, sporty…)
               final style = wardrobe.selectedStyle?.toLowerCase() ?? 'casual';
 
-              // 3) Погода
               final w = await WeatherService().getWeatherSummary();
               final weatherString = w ?? 'clear';
 
-              // 4) Отправляем в AI
               final suggestion = await ai.generateOutfitFromDescriptions(
                 wardrobe: itemsForAI,
                 weather: weatherString,
                 occasion: style,
               );
 
-              // 5) Достаём id из ответа
               final List<String> selectedIds =
                   (suggestion['outfit_items'] as List?)
                       ?.map((e) => e.toString())
@@ -361,18 +351,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 return selectedIds.contains(item.key.toString());
               }).toList();
 
-              // 6) Показать диалог
-              final notes = suggestion['notes'] ?? 'Нет пояснений';
+              final notes = suggestion['notes'] ?? 'No explanation';
 
               showDialog(
                 context: context,
                 builder: (_) => AlertDialog(
-                  title: const Text('Рекомендация AI-стилиста'),
+                  title: const Text('AI Stylist Recommendation'),
                   content: SingleChildScrollView(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(notes ?? 'Нет пояснений'),
+                        Text(notes ?? 'No explanation'),
                         const SizedBox(height: 12),
                         Wrap(
                           spacing: 8,
@@ -392,7 +381,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('Закрыть'),
+                      child: const Text('Close'),
                     ),
                     TextButton(
                       onPressed: () async {
@@ -412,13 +401,13 @@ class _HomeScreenState extends State<HomeScreen> {
                         );
 
                         if (mounted) {
-                          Navigator.of(context).pop(); // close dialog
+                          Navigator.of(context).pop();
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Образ сохранён')),
+                            const SnackBar(content: Text('Outfit saved')),
                           );
                         }
                       },
-                      child: const Text('Сохранить'),
+                      child: const Text('Save'),
                     ),
                   ],
                 ),
@@ -426,7 +415,7 @@ class _HomeScreenState extends State<HomeScreen> {
             } catch (e) {
               ScaffoldMessenger.of(
                 context,
-              ).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
+              ).showSnackBar(SnackBar(content: Text('Error: $e')));
             } finally {
               if (mounted) setState(() => isLoading = false);
             }
@@ -436,7 +425,7 @@ class _HomeScreenState extends State<HomeScreen> {
         const SizedBox(height: 12),
         _roundedButton(
           icon: Icons.bookmark_border,
-          text: 'Сохранённые',
+          text: 'Saved',
           onTap: () {
             Navigator.push(
               context,
@@ -471,7 +460,7 @@ class _HomeScreenState extends State<HomeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Рекомендации',
+            'Recommendations',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -482,7 +471,7 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 12),
           if (wardrobe.items.isEmpty)
             const Text(
-              'Добавьте вещи в гардероб и выберите стиль.',
+              'Add items to your wardrobe and select a style.',
               style: TextStyle(
                 fontSize: 15,
                 color: Colors.black54,
@@ -511,7 +500,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: item.imageWidget,
                       ),
                     ),
-
                     title: Text(
                       item.title,
                       style: const TextStyle(
@@ -520,7 +508,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     subtitle: const Text(
-                      'Идеально для вашей погоды!',
+                      'Perfect for your weather!',
                       style: TextStyle(fontFamily: 'Poppins'),
                     ),
                   ),

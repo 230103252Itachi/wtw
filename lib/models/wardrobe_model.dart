@@ -27,30 +27,25 @@ class WardrobeModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  // В WardrobeModel
   List<WardrobeItem> getItemsByKeys(List<String> keys) {
     final found = <WardrobeItem>[];
 
     for (var k in keys) {
-      // 1) Попробуем найти по Hive key (key может быть int или String)
       try {
         final byKey = items.firstWhere((it) {
           final keyStr = it.key?.toString() ?? '';
           return keyStr == k;
         });
         found.add(byKey);
-        continue; // нашли — переходим к следующему ключу
+        continue;
       } catch (e) {
-        // ничего — не найден по key
       }
 
-      // 2) Попробуем найти по imagePath
       try {
         final byPath = items.firstWhere((it) => it.imagePath == k);
         found.add(byPath);
         continue;
       } catch (e) {
-        // тоже не найден — пропускаем
       }
     }
 

@@ -14,7 +14,6 @@ class ViewItemScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // получить аргумент из route если не передан в конструкторе
     final routeArg = ModalRoute.of(context)?.settings.arguments;
     WardrobeItem? item = itemArg;
     String? imagePath = imagePathArg;
@@ -28,7 +27,7 @@ class ViewItemScreen extends StatelessWidget {
       }
     }
 
-    imagePath ??= ''; // пустая строка по умолчанию
+    imagePath ??= '';
 
     final wardrobe = Provider.of<WardrobeModel?>(context);
 
@@ -46,16 +45,16 @@ class ViewItemScreen extends StatelessWidget {
                 final ok = await showDialog<bool>(
                   context: context,
                   builder: (ctx) => AlertDialog(
-                    title: const Text('Удалить вещь?'),
-                    content: const Text('Эта вещь будет удалена из гардероба.'),
+                    title: const Text('Delete Item?'),
+                    content: const Text('This item will be deleted from your wardrobe.'),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.of(ctx).pop(false),
-                        child: const Text('Отмена'),
+                        child: const Text('Cancel'),
                       ),
                       TextButton(
                         onPressed: () => Navigator.of(ctx).pop(true),
-                        child: const Text('Удалить'),
+                        child: const Text('Delete'),
                       ),
                     ],
                   ),
@@ -97,7 +96,7 @@ class ViewItemScreen extends StatelessWidget {
                           );
                         }
                         return _buildNotFound(
-                          message: 'Изображение не найдено\nПуть: $imagePath',
+                          message: 'Image not found\nPath: $imagePath',
                         );
                       },
                     ),
@@ -117,7 +116,7 @@ class ViewItemScreen extends StatelessWidget {
           const Icon(Icons.broken_image, size: 80, color: Colors.white24),
           const SizedBox(height: 12),
           Text(
-            message ?? 'Изображение не найдено',
+            message ?? 'Image not found',
             textAlign: TextAlign.center,
             style: const TextStyle(color: Colors.white54),
           ),

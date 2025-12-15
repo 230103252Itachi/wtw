@@ -9,7 +9,6 @@ import 'package:wtw/models/wardrobe_item.dart';
 class SavedScreen extends StatelessWidget {
   const SavedScreen({Key? key}) : super(key: key);
 
-  // сколько миниатюр показываем в карточке (остальные по нажатию)
   static const int maxThumbs = 4;
 
   @override
@@ -20,7 +19,7 @@ class SavedScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'Сохранённые образы',
+          'Saved Outfits',
           style: TextStyle(
             color: Color(0xFF4B4CFF),
             fontWeight: FontWeight.bold,
@@ -35,7 +34,7 @@ class SavedScreen extends StatelessWidget {
         child: saved.isEmpty
             ? const Center(
                 child: Text(
-                  'Нет сохранённых образов',
+                  'No saved outfits',
                   style: TextStyle(color: Colors.black54),
                 ),
               )
@@ -64,10 +63,8 @@ class SavedScreen extends StatelessWidget {
                       ),
                       child: Row(
                         children: [
-                          // Left: stacked thumbnails
                           _StackedThumbs(items: items),
                           const SizedBox(width: 12),
-                          // Middle: title + date + short notes
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -91,7 +88,7 @@ class SavedScreen extends StatelessWidget {
                                 Text(
                                   outfit.notes.isNotEmpty
                                       ? outfit.notes
-                                      : 'Без заметок',
+                                      : 'No notes',
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(color: Colors.black87),
@@ -99,12 +96,11 @@ class SavedScreen extends StatelessWidget {
                               ],
                             ),
                           ),
-                          // Right: delete button
                           IconButton(
                             onPressed: () async {
                               await wardrobe.removeSavedById(outfit.id);
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Образ удалён')),
+                                const SnackBar(content: Text('Outfit deleted')),
                               );
                             },
                             icon: const Icon(
@@ -122,7 +118,7 @@ class SavedScreen extends StatelessWidget {
     );
   }
 
-  String _formatDate(String iso) {
+  static String _formatDate(String iso) {
     try {
       final dt = DateTime.parse(iso).toLocal();
       return "${dt.day.toString().padLeft(2, '0')}.${dt.month.toString().padLeft(2, '0')}.${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}";
@@ -131,7 +127,7 @@ class SavedScreen extends StatelessWidget {
     }
   }
 
-  void _openOutfitDetails(
+  static void _openOutfitDetails(
     BuildContext context,
     Outfit outfit,
     List<WardrobeItem> items,
@@ -201,7 +197,7 @@ class SavedScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              it.title ?? it.title ?? 'Item',
+                              it.title ?? 'Item',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -215,7 +211,7 @@ class SavedScreen extends StatelessWidget {
                     alignment: Alignment.centerRight,
                     child: TextButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('Закрыть'),
+                      child: const Text('Close'),
                     ),
                   ),
                 ],
@@ -228,7 +224,6 @@ class SavedScreen extends StatelessWidget {
   }
 }
 
-/// Виджет, который рисует до 4 миниатюр наложением (overlapping)
 class _StackedThumbs extends StatelessWidget {
   final List<WardrobeItem> items;
   const _StackedThumbs({Key? key, required this.items}) : super(key: key);
@@ -239,10 +234,9 @@ class _StackedThumbs extends StatelessWidget {
     final show = items.length < maxShow ? items.length : maxShow;
     final thumbs = items.take(show).toList();
 
-    // размеры
     const double thumbWidth = 56;
     const double thumbHeight = 72;
-    const double overlap = 18; // на сколько сдвигаем следующую миниатюру влево
+    const double overlap = 18;
 
     return SizedBox(
       width: thumbWidth + (thumbs.length - 1) * (thumbWidth - overlap),
@@ -250,12 +244,8 @@ class _StackedThumbs extends StatelessWidget {
       child: Stack(
         clipBehavior: Clip.none,
         children: List.generate(thumbs.length, (i) {
-          final idx = i;
           final left = i * (thumbWidth - overlap);
-          final item =
-              thumbs[thumbs.length -
-                  1 -
-                  i]; // рисуем с конца, чтобы первый был сверху
+          final item = thumbs[thumbs.length - 1 - i];
           return Positioned(
             left: left,
             child: Material(

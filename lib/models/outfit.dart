@@ -17,10 +17,9 @@ class Outfit {
     required this.createdAtIso,
   });
 
-  /// 🎯 Новый getter — позволяет использовать outfit.items как раньше
   List<WardrobeItem> get items {
     try {
-      final wardrobe = WardrobeModel.instance; // singleton-provider (см. ниже)
+      final wardrobe = WardrobeModel.instance;
       return wardrobe.getItemsByKeys(itemKeys);
     } catch (e) {
       debugPrint("[Outfit] items getter error: $e");

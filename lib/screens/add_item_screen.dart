@@ -40,7 +40,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
     if (_pickedFile == null) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Выберите фото')));
+      ).showSnackBar(const SnackBar(content: Text('Choose a photo')));
       return;
     }
     if (_category.trim().isEmpty) _category = 'Untitled';
@@ -51,42 +51,35 @@ class _AddItemScreenState extends State<AddItemScreen> {
 
       final savedFile = await _photoHelper.saveImagePermanently(_pickedFile!);
 
-      // 2) Add to wardrobe model (this should persist via Hive inside the model)
       final item = WardrobeItem(imagePath: savedFile.path, title: _category);
       await wardrobe.addItem(item);
       await AICache.put(savedFile.path, {'status': 'processing'});
-      // 3) Compress + call AI describe (in background)
       _processAndCacheImage(savedFile);
 
-      // 4) close screen
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       debugPrint('Save item error: $e');
       if (mounted)
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
 
-  /// Runs in background: compress -> call AI -> cache result
   Future<void> _processAndCacheImage(File file) async {
     try {
       debugPrint('[AI] process start for ${file.path}');
 
-      // Убедимся, что AICache инициализирован (опционально)
       if (!Hive.isBoxOpen('ai_cache')) {
         debugPrint('[AI] ai_cache box is not open — opening now');
         await Hive.openBox('ai_cache');
       }
 
-      // mark processing (if not already set)
       await AICache.put(file.path, {'status': 'processing'});
       debugPrint('[AI] status set to processing for ${file.path}');
 
-      // compress image (wrap in try/catch)
       File compressed;
       try {
         compressed = await compressImage(file);
@@ -101,7 +94,6 @@ class _AddItemScreenState extends State<AddItemScreen> {
         return;
       }
 
-      // call AI describe
       Map<String, dynamic> desc;
       try {
         final ai = AIStylistService();
@@ -116,7 +108,6 @@ class _AddItemScreenState extends State<AddItemScreen> {
         return;
       }
 
-      // save successful result (overwrite processing)
       await AICache.put(file.path, {
         ...desc,
         'status': 'done',
@@ -138,7 +129,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Добавить вещь'),
+        title: const Text('Add Item'),
         foregroundColor: const Color(0xFF4B4CFF),
         elevation: 1,
       ),
@@ -156,13 +147,13 @@ class _AddItemScreenState extends State<AddItemScreen> {
                           const SizedBox(height: 12),
                           ElevatedButton.icon(
                             icon: const Icon(Icons.photo_library),
-                            label: const Text('Галерея'),
+                            label: const Text('Gallery'),
                             onPressed: _pickFromGallery,
                           ),
                           const SizedBox(height: 8),
                           OutlinedButton.icon(
                             icon: const Icon(Icons.camera_alt),
-                            label: const Text('Камера'),
+                            label: const Text('Camera'),
                             onPressed: _pickFromCamera,
                           ),
                         ],
@@ -171,7 +162,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
               ),
             ),
             TextField(
-              decoration: const InputDecoration(labelText: 'Название'),
+              decoration: const InputDecoration(labelText: 'Name'),
               onChanged: (v) => _category = v,
             ),
             const SizedBox(height: 12),
@@ -182,7 +173,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
                 onPressed: _saving ? null : _saveItem,
                 child: _saving
                     ? const CircularProgressIndicator()
-                    : const Text('Сохранить'),
+                    : const Text('Save'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF4B4CFF),
                 ),

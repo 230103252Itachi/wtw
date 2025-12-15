@@ -3,16 +3,13 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import '../services/openai_key_store.dart'; // поправь путь, если у тебя другой
+import '../services/openai_key_store.dart';
 
 class AIStylistService {
   AIStylistService();
 
-  // Базовый endpoint Chat Completions (используем Chat Completions API).
-  // При желании поменяй модель на gpt-4o-mini или gpt-4o в зависимости от доступа.
   static const String _baseUrl = 'https://api.openai.com/v1/chat/completions';
 
-  // Приватный метод получения ключа (не вызывать извне)
   Future<String> _getApiKey() async {
     final key = await OpenAIKeyStore.getKey();
     if (key == null || key.isEmpty) {
@@ -27,9 +24,6 @@ class AIStylistService {
   }) async {
     final apiKey = await _getApiKey();
 
-    // (опционально) compress before sending
-    // final compressed = await compressImage(imageFile);
-    // final bytes = await compressed.readAsBytes();
     final bytes = await imageFile.readAsBytes();
     final base64Image = base64Encode(bytes);
     final dataUri = 'data:image/jpeg;base64,$base64Image';
@@ -41,12 +35,11 @@ class AIStylistService {
             "You are a precise fashion-item recognizer. Return ONLY valid JSON with keys: category, colors, material, style_tags, pattern, warmth, notes.",
       },
       {
-        // content — массив: первый элемент должен быть объект с image_url: { url: ... }
         "role": "user",
         "content": [
           {
             "type": "image_url",
-            "image_url": {"url": dataUri}, // <- ВАЖНО: объект, не строка
+            "image_url": {"url": dataUri},
           },
           {
             "type": "text",
@@ -118,8 +111,7 @@ class AIStylistService {
   }) async {
     final apiKey = await _getApiKey();
 
-    final system =
-        '''
+    final system = '''
 You are an expert fashion stylist. 
 Create the best matching outfit using the user's wardrobe items.
 

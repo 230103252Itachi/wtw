@@ -36,7 +36,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Гардероб'),
+        title: const Text('Wardrobe'),
         foregroundColor: const Color(0xFF4B4CFF),
         elevation: 1,
         actions: [
@@ -74,7 +74,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                           ),
                           SizedBox(height: 8),
                           Text(
-                            'В гардеробе пока нет вещей',
+                            'No items in wardrobe',
                             style: TextStyle(color: Color(0xFF4B4CFF)),
                           ),
                         ],
@@ -134,18 +134,15 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
   }
 
   Widget _buildItemCard(WardrobeItem item, WardrobeModel wardrobe) {
-    // Получаем описание (можно быть Map или raw string)
     final cached = AICache.get(item.imagePath);
 
-    // compute preview text (safely)
     String previewText() {
       try {
-        if (cached == null) return 'Описание ИИ: нет';
+        if (cached == null) return 'AI Description: none';
         if (cached is String)
           return (cached.length > 60) ? '${cached.substring(0, 60)}…' : cached;
         if (cached is Map) {
           final map = Map<String, dynamic>.from(cached);
-          // try to show category or notes or first tag
           if (map['notes'] != null && map['notes'].toString().isNotEmpty) {
             final s = map['notes'].toString();
             return s.length > 60 ? '${s.substring(0, 60)}…' : s;
@@ -156,17 +153,16 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
               (map['style_tags'] as List).isNotEmpty) {
             return (map['style_tags'] as List).join(', ');
           }
-          return 'Описание ИИ: есть';
+          return 'AI Description: available';
         }
-        return 'Описание ИИ: неизвестный формат';
+        return 'AI Description: unknown format';
       } catch (e) {
-        return 'Описание ИИ: ошибка';
+        return 'AI Description: error';
       }
     }
 
     return GestureDetector(
       onTap: () {
-        // Show full-screen view or bottom sheet with the description
         showModalBottomSheet(
           context: context,
           isScrollControlled: true,
@@ -199,12 +195,11 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                         ),
                       ),
                       Text(
-                        'Информация ИИ',
+                        'AI Information',
                         style: Theme.of(context).textTheme.titleMedium
                             ?.copyWith(fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 12),
-                      // image preview
                       ClipRRect(
                         borderRadius: BorderRadius.circular(12),
                         child: SizedBox(
@@ -216,7 +211,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                       const SizedBox(height: 12),
                       if (cachedLocal == null) ...[
                         const Text(
-                          'Описание пока недоступно (AI ещё не обработал это фото).',
+                          'Description not available yet.',
                         ),
                       ] else ...[
                         _buildDescriptionWidget(cachedLocal),
@@ -227,12 +222,11 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                           ElevatedButton.icon(
                             onPressed: () => Navigator.of(ctx).pop(),
                             icon: const Icon(Icons.close),
-                            label: const Text('Закрыть'),
+                            label: const Text('Close'),
                           ),
                           const SizedBox(width: 12),
                           ElevatedButton.icon(
                             onPressed: () {
-                              // Опция: открыть фото в полном экране
                               Navigator.of(ctx).push(
                                 MaterialPageRoute(
                                   builder: (_) => ViewItemScreen(itemArg: item),
@@ -240,7 +234,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                               );
                             },
                             icon: const Icon(Icons.open_in_full),
-                            label: const Text('Полный экран'),
+                            label: const Text('Full Screen'),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.grey[200],
                               foregroundColor: Colors.black,
@@ -308,9 +302,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                     ),
                     onPressed: () async {
                       await wardrobe.removeItem(item);
-                      await AICache.remove(
-                        item.imagePath,
-                      ); // also remove cached AI description
+                      await AICache.remove(item.imagePath);
                     },
                   ),
                 ],
@@ -324,7 +316,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
 
   Widget _buildDescriptionWidget(dynamic cached) {
     try {
-      if (cached == null) return const Text('Нет данных');
+      if (cached == null) return const Text('No data');
 
       if (cached is String) {
         return Text(cached);
@@ -332,7 +324,6 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
 
       if (cached is Map) {
         final map = Map<String, dynamic>.from(cached);
-        // Составим список полей в порядке важности
         final rows = <Widget>[];
 
         void addRow(String title, dynamic value) {
@@ -371,10 +362,9 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
         return Column(children: rows);
       }
 
-      // unknown type
       return Text(cached.toString());
     } catch (e) {
-      return Text('Ошибка отображения описания: $e');
+      return Text('Error displaying description: $e');
     }
   }
 
@@ -394,7 +384,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
               children: [
                 ListTile(
                   leading: const Icon(Icons.open_in_full),
-                  title: const Text('Открыть'),
+                  title: const Text('Open'),
                   onTap: () {
                     Navigator.of(ctx).pop();
                     Navigator.of(context).push(
@@ -407,7 +397,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                 ListTile(
                   leading: const Icon(Icons.delete, color: Colors.redAccent),
                   title: const Text(
-                    'Удалить',
+                    'Delete',
                     style: TextStyle(color: Colors.redAccent),
                   ),
                   onTap: () async {
@@ -429,25 +419,25 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
       builder: (ctx) {
         String temp = _search;
         return AlertDialog(
-          title: const Text('Поиск по гардеробу'),
+          title: const Text('Search Wardrobe'),
           content: TextField(
             autofocus: true,
             decoration: const InputDecoration(
-              hintText: 'Поиск по категории или пути',
+              hintText: 'Search by category or path',
             ),
             onChanged: (v) => temp = v,
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Отмена'),
+              child: const Text('Cancel'),
             ),
             TextButton(
               onPressed: () {
                 setState(() => _search = temp);
                 Navigator.of(ctx).pop();
               },
-              child: const Text('Искать'),
+              child: const Text('Search'),
             ),
           ],
         );
