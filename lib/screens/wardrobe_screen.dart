@@ -260,6 +260,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
         _showItemOptions(item, wardrobe);
       },
       child: Card(
+        color: Theme.of(context).cardColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         elevation: 6,
         shadowColor: Colors.black12,
@@ -278,20 +279,23 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
               child: Row(
                 children: [
                   Expanded(
-                    child: Column(
+                      child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           item.title,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium
+                              ?.copyWith(fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 6),
                         Text(
                           previewText(),
-                          style: const TextStyle(
-                            color: Colors.black54,
-                            fontSize: 12,
-                          ),
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(fontSize: 12),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -299,9 +303,9 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.delete_outline,
-                      color: Colors.redAccent,
+                      color: Theme.of(context).colorScheme.error,
                     ),
                     onPressed: () async {
                       await wardrobe.removeItem(item);

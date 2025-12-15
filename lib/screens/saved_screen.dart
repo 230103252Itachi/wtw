@@ -31,10 +31,10 @@ class SavedScreen extends StatelessWidget {
       body: Padding(
         padding: const EdgeInsets.all(12.0),
         child: saved.isEmpty
-            ? const Center(
+            ? Center(
                 child: Text(
                   'No saved outfits',
-                  style: TextStyle(color: Colors.black54),
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
               )
             : ListView.separated(
@@ -50,7 +50,7 @@ class SavedScreen extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: Theme.of(context).cardColor,
                         borderRadius: BorderRadius.circular(14),
                         boxShadow: [
                           BoxShadow(
@@ -70,18 +70,18 @@ class SavedScreen extends StatelessWidget {
                               children: [
                                 Text(
                                   outfit.title,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleMedium
+                                      ?.copyWith(fontWeight: FontWeight.w600),
                                 ),
                                 const SizedBox(height: 6),
                                 Text(
                                   _formatDate(outfit.createdAtIso),
-                                  style: const TextStyle(
-                                    color: Colors.black54,
-                                    fontSize: 13,
-                                  ),
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(fontSize: 13),
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
@@ -90,7 +90,8 @@ class SavedScreen extends StatelessWidget {
                                       : 'No notes',
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(color: Colors.black87),
+                                  style:
+                                      Theme.of(context).textTheme.bodyMedium,
                                 ),
                               ],
                             ),
@@ -102,9 +103,9 @@ class SavedScreen extends StatelessWidget {
                                 const SnackBar(content: Text('Outfit deleted')),
                               );
                             },
-                            icon: const Icon(
+                            icon: Icon(
                               Icons.delete_outline,
-                              color: Colors.redAccent,
+                              color: Theme.of(context).colorScheme.error,
                             ),
                           ),
                         ],
@@ -134,7 +135,7 @@ class SavedScreen extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).cardColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
@@ -153,15 +154,15 @@ class SavedScreen extends StatelessWidget {
                 children: [
                   Text(
                     outfit.title,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleLarge
+                        ?.copyWith(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 6),
                   Text(
                     _formatDate(outfit.createdAtIso),
-                    style: const TextStyle(color: Colors.black54),
+                    style: Theme.of(context).textTheme.bodySmall,
                   ),
                   const SizedBox(height: 12),
                   if (outfit.notes.isNotEmpty) ...[
@@ -183,7 +184,7 @@ class SavedScreen extends StatelessWidget {
                       final it = items[i];
                       return ClipRRect(
                         borderRadius: BorderRadius.circular(12),
-                        child: Column(
+                            child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             Expanded(
@@ -192,7 +193,7 @@ class SavedScreen extends StatelessWidget {
                                       File(it.imagePath),
                                       fit: BoxFit.cover,
                                     )
-                                  : Container(color: Colors.grey[200]),
+                                      : Container(color: Theme.of(context).dividerColor),
                             ),
                             const SizedBox(height: 8),
                             Text(
@@ -253,11 +254,11 @@ class _StackedThumbs extends StatelessWidget {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(10),
                 child: SizedBox(
-                  width: thumbWidth,
-                  height: thumbHeight,
-                  child: item.imagePath.isNotEmpty
+                    width: thumbWidth,
+                    height: thumbHeight,
+                    child: item.imagePath.isNotEmpty
                       ? Image.file(File(item.imagePath), fit: BoxFit.cover)
-                      : Container(color: Colors.grey[200]),
+                      : Container(color: Theme.of(context).dividerColor),
                 ),
               ),
             ),
