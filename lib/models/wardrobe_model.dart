@@ -9,6 +9,12 @@ class WardrobeModel extends ChangeNotifier {
   final List<Outfit> _saved = [];
   static late WardrobeModel instance;
 
+
+  WardrobeModel() {
+    instance = this;
+    _loadSavedOutfits();
+  }
+
   String _selectedStyle = 'Casual';
   String get selectedStyle => _selectedStyle;
 
