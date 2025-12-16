@@ -3,6 +3,8 @@ import 'package:hive/hive.dart';
 import '../models/wardrobe_item.dart';
 import '../models/outfit.dart';
 import 'package:uuid/uuid.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../services/firebase_wardrobe_service.dart';
 
 class WardrobeModel extends ChangeNotifier {
   final Box<WardrobeItem> _box = Hive.box<WardrobeItem>('wardrobeBox');
@@ -58,8 +60,37 @@ class WardrobeModel extends ChangeNotifier {
   }
 
   Future<void> removeItem(WardrobeItem item) async {
-    await item.delete();
-    notifyListeners();
+    try {
+      debugPrint('[Wardrobe] Removing item: ${item.title}');
+      
+      // If it's a Firebase item (URL), delete from Firebase
+      if (item.isNetworkImage && item.imagePath.contains('firebaseapp')) {
+        try {
+          debugPrint('[Wardrobe] Item is from Firebase, attempting to delete...');
+          final firebaseService = FirebaseWardrobeService.instance;
+          
+          // Extract item ID from imagePath (contains the itemId)
+          // Format: https://firebaseapp.com/.../items/{itemId}/photo.jpg
+          final parts = item.imagePath.split('/items/');
+          if (parts.length == 2) {
+            final itemId = parts[1].split('/')[0];
+            debugPrint('[Wardrobe] Deleting Firebase item ID: $itemId');
+            await firebaseService.deleteItem(itemId);
+            debugPrint('[Wardrobe] Firebase item deleted successfully');
+          }
+        } catch (e) {
+          debugPrint('[Wardrobe] Error deleting from Firebase: $e');
+        }
+      }
+      
+      // Delete from local storage
+      await item.delete();
+      notifyListeners();
+      debugPrint('[Wardrobe] Item removed successfully');
+    } catch (e) {
+      debugPrint('[Wardrobe] Error removing item: $e');
+      rethrow;
+    }
   }
 
   Future<void> saveOutfit({
@@ -110,5 +141,50 @@ class WardrobeModel extends ChangeNotifier {
     await box.delete(id);
     _saved.removeWhere((o) => o.id == id);
     notifyListeners();
+  }
+
+  // Load items from Firebase
+  Future<void> loadItemsFromFirebase() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      debugPrint('[Wardrobe] Loading items from Firebase for user: ${user.uid}');
+      
+      // Clear local items first to avoid duplicates
+      _box.clear();
+      
+      final firebaseService = FirebaseWardrobeService.instance;
+      final firebaseItems = await firebaseService.fetchUserItems();
+
+      debugPrint('[Wardrobe] Fetched ${firebaseItems.length} items from Firebase');
+
+      // Convert Firebase items to WardrobeItems and save to local cache
+      for (final itemData in firebaseItems) {
+        final photoUrl = itemData['photoUrl'] as String?;
+        final title = itemData['title'] as String? ?? 'Untitled';
+        
+        if (photoUrl != null && photoUrl.isNotEmpty) {
+          // Create item with Firebase URL
+          final item = WardrobeItem(
+            imagePath: photoUrl,
+            title: title,
+          );
+          await _box.add(item);
+          debugPrint('[Wardrobe] Added item: $title from Firebase');
+        }
+      }
+      
+      debugPrint('[Wardrobe] Loaded ${_box.values.length} items into local cache');
+      notifyListeners();
+    } catch (e) {
+      debugPrint('[Wardrobe] Error loading items from Firebase: $e');
+    }
+  }
+
+  // Refresh items from Firebase (use after adding new item)
+  Future<void> refreshItemsFromFirebase() async {
+    debugPrint('[Wardrobe] Refreshing items from Firebase...');
+    await loadItemsFromFirebase();
   }
 }

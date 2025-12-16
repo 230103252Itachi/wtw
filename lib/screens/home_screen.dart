@@ -312,11 +312,26 @@ class _HomeScreenState extends State<HomeScreen> {
               for (var item in wardrobe.items) {
                 final cache = await AICache.get(item.imagePath);
 
+                // Add item if it's been processed, or with minimal info if not
                 if (cache != null && cache['status'] == 'done') {
                   itemsForAI.add({
                     'id': item.key.toString(),
                     'path': item.imagePath,
                     ...cache,
+                  });
+                } else {
+                  // Fallback: add item without AI processing
+                  debugPrint('[Home] Item ${item.title} not processed yet, using fallback');
+                  itemsForAI.add({
+                    'id': item.key.toString(),
+                    'path': item.imagePath,
+                    'category': 'unknown',
+                    'colors': ['neutral'],
+                    'material': 'fabric',
+                    'style_tags': [],
+                    'pattern': 'solid',
+                    'warmth': 'moderate',
+                    'notes': '${item.title} - awaiting AI processing',
                   });
                 }
               }
@@ -325,7 +340,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 setState(() => isLoading = false);
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('No processed items.'),
+                    content: Text('No items in wardrobe. Add some items first.'),
                   ),
                 );
                 return;

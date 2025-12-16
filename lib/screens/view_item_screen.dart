@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:wtw/models/wardrobe_item.dart';
 import 'package:wtw/models/wardrobe_model.dart';
 
-class ViewItemScreen extends StatelessWidget {
+class ViewItemScreen extends StatefulWidget {
   final String? imagePathArg;
   final WardrobeItem? itemArg;
 
@@ -13,10 +13,15 @@ class ViewItemScreen extends StatelessWidget {
     : super(key: key);
 
   @override
+  State<ViewItemScreen> createState() => _ViewItemScreenState();
+}
+
+class _ViewItemScreenState extends State<ViewItemScreen> {
+  @override
   Widget build(BuildContext context) {
     final routeArg = ModalRoute.of(context)?.settings.arguments;
-    WardrobeItem? item = itemArg;
-    String? imagePath = imagePathArg;
+    WardrobeItem? item = widget.itemArg;
+    String? imagePath = widget.imagePathArg;
 
     if (routeArg != null) {
       if (routeArg is WardrobeItem) {
@@ -46,7 +51,7 @@ class ViewItemScreen extends StatelessWidget {
                   context: context,
                   builder: (ctx) => AlertDialog(
                     title: const Text('Delete Item?'),
-                    content: const Text('This item will be deleted from your wardrobe.'),
+                    content: const Text('This will delete the item from your wardrobe, Firebase Storage, and Firestore.'),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.of(ctx).pop(false),
@@ -54,14 +59,30 @@ class ViewItemScreen extends StatelessWidget {
                       ),
                       TextButton(
                         onPressed: () => Navigator.of(ctx).pop(true),
-                        child: const Text('Delete'),
+                        child: Text(
+                          'Delete',
+                          style: TextStyle(color: Colors.red.shade700),
+                        ),
                       ),
                     ],
                   ),
                 );
                 if (ok == true) {
-                  await wardrobe.removeItem(item!);
-                  if (Navigator.canPop(context)) Navigator.pop(context);
+                  try {
+                    await wardrobe.removeItem(item!);
+                    if (mounted && Navigator.canPop(context)) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Item deleted')),
+                      );
+                      Navigator.pop(context);
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error: $e')),
+                      );
+                    }
+                  }
                 }
               },
             ),

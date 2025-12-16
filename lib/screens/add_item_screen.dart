@@ -9,6 +9,7 @@ import 'package:wtw/services/wardrobe_photo_helper.dart';
 import 'package:wtw/utils/image_compress.dart';
 import 'package:wtw/services/ai_stylist_service.dart';
 import 'package:wtw/services/ai_cache.dart';
+import 'package:wtw/services/firebase_wardrobe_service.dart';
 import 'package:image_picker/image_picker.dart';
 
 class AddItemScreen extends StatefulWidget {
@@ -38,9 +39,9 @@ class _AddItemScreenState extends State<AddItemScreen> {
 
   Future<void> _saveItem() async {
     if (_pickedFile == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Choose a photo')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Choose a photo')),
+      );
       return;
     }
     if (_category.trim().isEmpty) _category = 'Untitled';
@@ -49,23 +50,90 @@ class _AddItemScreenState extends State<AddItemScreen> {
     try {
       final wardrobe = Provider.of<WardrobeModel>(context, listen: false);
 
+      // Save locally first (fast)
+      debugPrint('[AddItem] Saving image locally...');
       final savedFile = await _photoHelper.saveImagePermanently(_pickedFile!);
-
       final item = WardrobeItem(imagePath: savedFile.path, title: _category);
       await wardrobe.addItem(item);
-      await AICache.put(savedFile.path, {'status': 'processing'});
-      _processAndCacheImage(savedFile);
-
-      if (mounted) Navigator.of(context).pop();
+      
+      debugPrint('[AddItem] Local save complete, closing screen...');
+      
+      // Close screen IMMEDIATELY
+      if (mounted) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Item saved! Processing in background...'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+        Navigator.of(context).pop();
+      }
+      
+      // Start Firebase upload in background (don't wait)
+      debugPrint('[AddItem] Starting Firebase upload in background...');
+      _uploadAndProcessInBackground(savedFile, _category);
+      
     } catch (e) {
-      debugPrint('Save item error: $e');
-      if (mounted)
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
-    } finally {
-      if (mounted) setState(() => _saving = false);
+      debugPrint('[AddItem] Save item error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+        setState(() => _saving = false);
+      }
     }
+  }
+
+  Future<String?> _uploadToFirebaseInBackground(File file, String category) async {
+    try {
+      debugPrint('[Firebase] Starting upload...');
+      final firebaseService = FirebaseWardrobeService.instance;
+      final itemId = await firebaseService.uploadItemWithPhoto(
+        photoFile: file,
+        category: category,
+      );
+      debugPrint('[Firebase] Upload successful! Item ID: $itemId');
+      return itemId;
+    } catch (e) {
+      debugPrint('[Firebase] Upload error: $e');
+      rethrow;
+    }
+  }
+
+  // Executes Firebase upload AND AI processing in background (non-blocking)
+  void _uploadAndProcessInBackground(File file, String category) {
+    Future<void>(() async {
+      try {
+        // Upload to Firebase
+        debugPrint('[BG] Starting Firebase upload...');
+        final firebaseService = FirebaseWardrobeService.instance;
+        await firebaseService.uploadItemWithPhoto(
+          photoFile: file,
+          category: category,
+        );
+        debugPrint('[BG] Firebase upload complete');
+
+        // Refresh wardrobe from Firebase
+        debugPrint('[BG] Refreshing wardrobe...');
+        final wardrobe = Provider.of<WardrobeModel?>(context, listen: false);
+        if (wardrobe != null) {
+          await wardrobe.refreshItemsFromFirebase();
+          debugPrint('[BG] Wardrobe refreshed');
+        }
+      } catch (e) {
+        debugPrint('[BG] Firebase upload failed: $e');
+      }
+
+      try {
+        // Process image with AI
+        debugPrint('[BG] Starting AI processing...');
+        await _processAndCacheImage(file);
+        debugPrint('[BG] AI processing complete');
+      } catch (e) {
+        debugPrint('[BG] AI processing failed: $e');
+      }
+    }).ignore(); // Fire and forget
   }
 
   Future<void> _processAndCacheImage(File file) async {

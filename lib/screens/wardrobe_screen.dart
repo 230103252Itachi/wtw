@@ -308,8 +308,44 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                       color: Theme.of(context).colorScheme.error,
                     ),
                     onPressed: () async {
-                      await wardrobe.removeItem(item);
-                      await AICache.remove(item.imagePath);
+                      // Show confirmation dialog
+                      showDialog(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Delete Item?'),
+                          content: const Text('This will delete the item from your wardrobe and Firebase.'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx),
+                              child: const Text('Cancel'),
+                            ),
+                            TextButton(
+                              onPressed: () async {
+                                Navigator.pop(ctx);
+                                try {
+                                  await wardrobe.removeItem(item);
+                                  await AICache.remove(item.imagePath);
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('Item deleted')),
+                                    );
+                                  }
+                                } catch (e) {
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('Error: $e')),
+                                    );
+                                  }
+                                }
+                              },
+                              child: const Text(
+                                'Delete',
+                                style: TextStyle(color: Colors.red),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
                     },
                   ),
                 ],
@@ -409,7 +445,43 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                   ),
                   onTap: () async {
                     Navigator.of(ctx).pop();
-                    await wardrobe.removeItem(item);
+                    // Show confirmation
+                    showDialog(
+                      context: context,
+                      builder: (dialogCtx) => AlertDialog(
+                        title: const Text('Delete Item?'),
+                        content: const Text('This will delete the item from your wardrobe and Firebase.'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(dialogCtx),
+                            child: const Text('Cancel'),
+                          ),
+                          TextButton(
+                            onPressed: () async {
+                              Navigator.pop(dialogCtx);
+                              try {
+                                await wardrobe.removeItem(item);
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Item deleted')),
+                                  );
+                                }
+                              } catch (e) {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Error: $e')),
+                                  );
+                                }
+                              }
+                            },
+                            child: const Text(
+                              'Delete',
+                              style: TextStyle(color: Colors.red),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
                   },
                 ),
               ],

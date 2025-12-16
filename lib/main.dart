@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -12,10 +14,17 @@ import 'package:wtw/models/wardrobe_item.dart';
 import 'package:wtw/services/ai_cache.dart';
 import 'package:wtw/screens/add_item_screen.dart';
 import 'package:wtw/services/openai_key_store.dart';
+import 'package:wtw/screens/login_screen.dart';
+import 'firebase_options.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
+
+  // Initialize Firebase
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 
   final openaiKey = dotenv.env['OPENAI_API_KEY'];
   if (openaiKey != null && openaiKey.isNotEmpty) {
@@ -84,7 +93,24 @@ class WhatToWearApp extends StatelessWidget {
               ),
             ),
             themeMode: darkMode ? ThemeMode.dark : ThemeMode.light,
-            home: const MainTabs(),
+            home: StreamBuilder<User?>(
+              stream: FirebaseAuth.instance.authStateChanges(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Scaffold(
+                    body: Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                  );
+                }
+                
+                if (snapshot.hasData && snapshot.data != null) {
+                  return const MainTabs();
+                }
+                
+                return const LoginScreen();
+              },
+            ),
             routes: {
               '/addItem': (ctx) => const AddItemScreen(),
               '/profile': (ctx) => const ProfileScreen(),
@@ -112,6 +138,22 @@ class _MainTabsState extends State<MainTabs> {
     const SavedScreen(),
     const ProfileScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    // Load items from Firebase when user enters the app
+    _loadFirebaseItems();
+  }
+
+  Future<void> _loadFirebaseItems() async {
+    try {
+      final wardrobe = Provider.of<WardrobeModel>(context, listen: false);
+      await wardrobe.loadItemsFromFirebase();
+    } catch (e) {
+      debugPrint('Error loading Firebase items: $e');
+    }
+  }
 
   void _onTap(int idx) {
     setState(() {

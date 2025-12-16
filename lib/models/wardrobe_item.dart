@@ -14,12 +14,31 @@ class WardrobeItem extends HiveObject {
 
   WardrobeItem({required this.imagePath, required this.title});
 
+  // Check if path is a URL (from Firebase) or local file path
+  bool get isNetworkImage => imagePath.startsWith('http');
+
   Future<File?> get image async {
+    if (isNetworkImage) return null; // Network images don't need File
     final file = File(imagePath);
     return file.existsSync() ? file : null;
   }
 
   Widget get imageWidget {
+    if (isNetworkImage) {
+      // Show network image from Firebase
+      return Image.network(
+        imagePath,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return Image.asset(
+            'assets/images/placeholder.png',
+            fit: BoxFit.cover,
+          );
+        },
+      );
+    }
+    
+    // Show local file
     return FutureBuilder<File?>(
       future: image,
       builder: (context, snapshot) {

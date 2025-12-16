@@ -1,4 +1,5 @@
 // lib/services/ai_stylist_service.dart
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -57,14 +58,39 @@ class AIStylistService {
       "max_tokens": 300,
     };
 
-    final resp = await http.post(
-      Uri.parse(_baseUrl),
-      headers: {
-        "Authorization": "Bearer $apiKey",
-        "Content-Type": "application/json",
-      },
-      body: jsonEncode(body),
-    );
+    debugPrint('[OpenAI] Sending describe request...');
+    
+    http.Response resp;
+    try {
+      final client = http.Client();
+      resp = await client.post(
+        Uri.parse(_baseUrl),
+        headers: {
+          "Authorization": "Bearer $apiKey",
+          "Content-Type": "application/json",
+        },
+        body: jsonEncode(body),
+      ).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          debugPrint('[OpenAI] Request timeout after 30 seconds');
+          throw TimeoutException('OpenAI API timeout');
+        },
+      );
+      client.close();
+    } on TimeoutException catch (e) {
+      debugPrint('[OpenAI] Timeout error: $e');
+      return {
+        'status': 'error',
+        'error': 'OpenAI timeout (took longer than 30 seconds)',
+      };
+    } catch (e) {
+      debugPrint('[OpenAI] Connection error: $e');
+      return {
+        'status': 'error',
+        'error': 'Connection error: $e',
+      };
+    }
 
     debugPrint('[OpenAI] describe status=${resp.statusCode}');
     debugPrint(
