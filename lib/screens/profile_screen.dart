@@ -1,3 +1,4 @@
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
@@ -21,13 +22,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String? _loggedInUser;
   Gender? _gender;
 
-  // Controllers
   final TextEditingController _keyController = TextEditingController();
   final TextEditingController _userController = TextEditingController();
   final TextEditingController _passController = TextEditingController();
 
-  // Preferences
   bool _compactList = false;
+  bool _notificationsEnabled = false;
 
   @override
   void initState() {
@@ -39,13 +39,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _loadSettings() async {
     final key = await OpenAIKeyStore.getKey();
     _keyController.text = key ?? '';
+
     try {
       await Hive.openBox('settings');
       final box = Hive.box('settings');
+
       setState(() {
-        _compactList = box.get('compactList', defaultValue: false) as bool;
+        _notificationsEnabled =
+            box.get('dailyNotifications', defaultValue: false) as bool;
       });
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Settings load error: $e');
+    }
   }
 
   Future<void> _loadAuthState() async {
@@ -88,10 +93,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     final Map<String, dynamic> newUsers = Map<String, dynamic>.from(users);
 
-    newUsers[username] = {
-      'password': _hash(password),
-      'gender': _gender!.name, // male / female
-    };
+    newUsers[username] = {'password': _hash(password), 'gender': _gender!.name};
 
     await box.put('users', newUsers);
     await box.put('currentUser', username);
@@ -171,7 +173,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           wardrobe.items.clear();
         } catch (_) {}
         try {
-          // ignore: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
           wardrobe.notifyListeners();
         } catch (_) {}
       }
@@ -456,6 +457,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           activeColor: const Color(0xFF4B4CFF),
                         ),
                         const SizedBox(height: 6),
+                        SwitchListTile(
+                          title: const Text('Ежедневные уведомления'),
+                          subtitle: const Text(
+                            'Получать напоминание раз в день',
+                          ),
+                          value: _notificationsEnabled,
+                          onChanged: _toggleNotifications,
+                        ),
+                        const SizedBox(height: 6),
                         FutureBuilder(
                           future: Hive.openBox('settings'),
                           builder: (context, snap) {
@@ -578,5 +588,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _toggleNotifications(bool value) async {
+    setState(() => _notificationsEnabled = value);
+
+    final box = Hive.box('settings');
+    await box.put('dailyNotifications', value);
+
+    if (value) {
+      await FirebaseMessaging.instance.subscribeToTopic('daily_notifications');
+    } else {
+      await FirebaseMessaging.instance.unsubscribeFromTopic(
+        'daily_notifications',
+      );
+    }
   }
 }

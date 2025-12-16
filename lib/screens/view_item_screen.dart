@@ -1,4 +1,3 @@
-// lib/screens/view_item_screen.dart
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -14,7 +13,6 @@ class ViewItemScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // получить аргумент из route если не передан в конструкторе
     final routeArg = ModalRoute.of(context)?.settings.arguments;
     WardrobeItem? item = itemArg;
     String? imagePath = imagePathArg;
@@ -28,7 +26,7 @@ class ViewItemScreen extends StatelessWidget {
       }
     }
 
-    imagePath ??= ''; // пустая строка по умолчанию
+    imagePath ??= '';
 
     final wardrobe = Provider.of<WardrobeModel?>(context);
 

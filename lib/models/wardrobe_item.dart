@@ -37,14 +37,10 @@ class WardrobeItem extends HiveObject {
     );
   }
 
-  /// Serializes the WardrobeItem to a JSON-compatible map.
-  /// Includes `id` when the item is saved in Hive (key is available).
   Map<String, dynamic> toJson() {
     return {'id': key?.toString(), 'imagePath': imagePath, 'category': title};
   }
 
-  /// Creates a WardrobeItem from a JSON map.
-  /// Note: when creating fromJson for Hive you still need to save it to a box.
   static WardrobeItem fromJson(Map<String, dynamic> map) {
     return WardrobeItem(
       imagePath: map['imagePath'] as String? ?? '',

@@ -48,7 +48,7 @@ class _HomeScreenState extends State<HomeScreen> {
       }
 
       final weatherService = WeatherService();
-      // Try to get temperature and description via available methods.
+
       double? temp = await weatherService.getTemperatureByCoords(
         position.latitude,
         position.longitude,
@@ -56,7 +56,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
       String? condition;
       try {
-        // Some implementations may use getWeatherDescription/getWeatherConditionByCoords
         condition = await weatherService.getWeatherDescription(
           position.latitude,
           position.longitude,
@@ -77,10 +76,9 @@ class _HomeScreenState extends State<HomeScreen> {
           isLoading = false;
         });
       } else {
-        // Try to parse from currentSummary fallback
         try {
           final summary = await weatherService.currentSummary();
-          // expected "desc, 15°C" format
+
           final parts = summary.split(',');
           if (parts.isNotEmpty) {
             condition = parts[0].trim();
@@ -309,7 +307,6 @@ class _HomeScreenState extends State<HomeScreen> {
             setState(() => isLoading = true);
 
             try {
-              // 1) Собираем описания вещей (AI data)
               List<Map<String, dynamic>> itemsForAI = [];
 
               for (var item in wardrobe.items) {
@@ -319,7 +316,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   itemsForAI.add({
                     'id': item.key.toString(),
                     'path': item.imagePath,
-                    ...cache, // category, material, colors etc
+                    ...cache,
                   });
                 }
               }
@@ -336,21 +333,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 return;
               }
 
-              // 2) Выбранный стиль (casual, formal, sporty…)
               final style = wardrobe.selectedStyle?.toLowerCase() ?? 'casual';
 
-              // 3) Погода
               final w = await WeatherService().getWeatherSummary();
               final weatherString = w ?? 'clear';
 
-              // 4) Отправляем в AI
               final suggestion = await ai.generateOutfitFromDescriptions(
                 wardrobe: itemsForAI,
                 weather: weatherString,
                 occasion: style,
               );
 
-              // 5) Достаём id из ответа
               final List<String> selectedIds =
                   (suggestion['outfit_items'] as List?)
                       ?.map((e) => e.toString())
@@ -361,7 +354,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 return selectedIds.contains(item.key.toString());
               }).toList();
 
-              // 6) Показать диалог
               final notes = suggestion['notes'] ?? 'Нет пояснений';
 
               showDialog(
@@ -412,7 +404,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         );
 
                         if (mounted) {
-                          Navigator.of(context).pop(); // close dialog
+                          Navigator.of(context).pop();
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('Образ сохранён')),
                           );

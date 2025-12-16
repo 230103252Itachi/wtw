@@ -134,10 +134,8 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
   }
 
   Widget _buildItemCard(WardrobeItem item, WardrobeModel wardrobe) {
-    // Получаем описание (можно быть Map или raw string)
     final cached = AICache.get(item.imagePath);
 
-    // compute preview text (safely)
     String previewText() {
       try {
         if (cached == null) return 'Описание ИИ: нет';
@@ -145,7 +143,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
           return (cached.length > 60) ? '${cached.substring(0, 60)}…' : cached;
         if (cached is Map) {
           final map = Map<String, dynamic>.from(cached);
-          // try to show category or notes or first tag
+
           if (map['notes'] != null && map['notes'].toString().isNotEmpty) {
             final s = map['notes'].toString();
             return s.length > 60 ? '${s.substring(0, 60)}…' : s;
@@ -166,7 +164,6 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
 
     return GestureDetector(
       onTap: () {
-        // Show full-screen view or bottom sheet with the description
         showModalBottomSheet(
           context: context,
           isScrollControlled: true,
@@ -204,7 +201,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                             ?.copyWith(fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 12),
-                      // image preview
+
                       ClipRRect(
                         borderRadius: BorderRadius.circular(12),
                         child: SizedBox(
@@ -232,7 +229,6 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                           const SizedBox(width: 12),
                           ElevatedButton.icon(
                             onPressed: () {
-                              // Опция: открыть фото в полном экране
                               Navigator.of(ctx).push(
                                 MaterialPageRoute(
                                   builder: (_) => ViewItemScreen(itemArg: item),
@@ -308,9 +304,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                     ),
                     onPressed: () async {
                       await wardrobe.removeItem(item);
-                      await AICache.remove(
-                        item.imagePath,
-                      ); // also remove cached AI description
+                      await AICache.remove(item.imagePath);
                     },
                   ),
                 ],
@@ -332,7 +326,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
 
       if (cached is Map) {
         final map = Map<String, dynamic>.from(cached);
-        // Составим список полей в порядке важности
+
         final rows = <Widget>[];
 
         void addRow(String title, dynamic value) {
@@ -371,7 +365,6 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
         return Column(children: rows);
       }
 
-      // unknown type
       return Text(cached.toString());
     } catch (e) {
       return Text('Ошибка отображения описания: $e');

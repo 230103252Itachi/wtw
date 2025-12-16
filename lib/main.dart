@@ -1,8 +1,9 @@
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-
+import 'package:firebase_core/firebase_core.dart';
 import 'package:wtw/models/wardrobe_model.dart';
 import 'package:wtw/screens/home_screen.dart';
 import 'package:wtw/screens/wardrobe_screen.dart';
@@ -10,12 +11,14 @@ import 'package:wtw/screens/saved_screen.dart';
 import 'package:wtw/screens/profile_screen.dart';
 import 'package:wtw/models/wardrobe_item.dart';
 import 'package:wtw/services/ai_cache.dart';
+
 import 'package:wtw/screens/add_item_screen.dart';
+import 'package:wtw/services/fcm_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
-
+  await Firebase.initializeApp();
   await Hive.initFlutter();
   Hive.registerAdapter(WardrobeItemAdapter());
   await Hive.openBox<WardrobeItem>('wardrobeBox');
@@ -23,6 +26,8 @@ Future<void> main() async {
   await Hive.openBox('settings');
   await AICache.init();
   await Hive.openBox('savedOutfits');
+  await FCMService.init();
+  await FirebaseMessaging.instance.requestPermission();
   runApp(const WhatToWearApp());
 }
 
@@ -64,11 +69,10 @@ class WhatToWearApp extends StatelessWidget {
               ),
             ),
             themeMode: darkMode ? ThemeMode.dark : ThemeMode.light,
-            home: const MainTabs(), // <-- use bottom tabs wrapper
+            home: const MainTabs(),
             routes: {
               '/addItem': (ctx) => const AddItemScreen(),
               '/profile': (ctx) => const ProfileScreen(),
-              // add other named routes if you have them
             },
           );
         },
@@ -77,8 +81,6 @@ class WhatToWearApp extends StatelessWidget {
   }
 }
 
-/// MainTabs: Bottom navigation with persistent pages using IndexedStack.
-/// Tabs: Home, Wardrobe, Saved, Profile
 class MainTabs extends StatefulWidget {
   const MainTabs({Key? key}) : super(key: key);
 
@@ -89,11 +91,10 @@ class MainTabs extends StatefulWidget {
 class _MainTabsState extends State<MainTabs> {
   int _currentIndex = 0;
 
-  // Keep pages here. Use your real screens where available.
   final List<Widget> _pages = [
     const HomeScreen(),
     const WardrobeScreen(),
-    const SavedScreen(), // placeholder - you can replace with actual saved screen
+    const SavedScreen(),
     const ProfileScreen(),
   ];
 

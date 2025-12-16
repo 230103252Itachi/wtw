@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "93270588334",
+    "project_id": "wtwapp-8c052",
+    "storage_bucket": "wtwapp-8c052.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:93270588334:android:6dba55b74d74800ad4263f",
+        "android_client_info": {
+          "package_name": "com.example.wtw"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDDYPlUipv3dOTgGJ0fe5ghKh-jV4a0UpM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

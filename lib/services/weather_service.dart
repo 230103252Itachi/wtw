@@ -35,9 +35,7 @@ class WeatherService {
     }
   }
 
-  /// 🔥 Новый метод — теперь HomeScreen НЕ сломается
   Future<String> currentSummary() async {
-    // Проверка разрешений
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) return "clear";
 
@@ -48,7 +46,6 @@ class WeatherService {
     }
     if (permission == LocationPermission.deniedForever) return "clear";
 
-    // Получаем текущие координаты
     final pos = await Geolocator.getCurrentPosition(
       desiredAccuracy: LocationAccuracy.high,
     );

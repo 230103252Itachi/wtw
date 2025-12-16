@@ -1,4 +1,3 @@
-// lib/screens/saved_screen.dart
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -9,7 +8,6 @@ import 'package:wtw/models/wardrobe_item.dart';
 class SavedScreen extends StatelessWidget {
   const SavedScreen({Key? key}) : super(key: key);
 
-  // сколько миниатюр показываем в карточке (остальные по нажатию)
   static const int maxThumbs = 4;
 
   @override
@@ -44,7 +42,6 @@ class SavedScreen extends StatelessWidget {
                 separatorBuilder: (_, __) => const SizedBox(height: 12),
                 itemBuilder: (ctx, idx) {
                   final outfit = saved[idx];
-                  // Resolve real WardrobeItem objects by keys (this uses your provider helper)
                   final items = wardrobe.getItemsByKeys(outfit.itemKeys);
 
                   return GestureDetector(
@@ -64,10 +61,9 @@ class SavedScreen extends StatelessWidget {
                       ),
                       child: Row(
                         children: [
-                          // Left: stacked thumbnails
                           _StackedThumbs(items: items),
                           const SizedBox(width: 12),
-                          // Middle: title + date + short notes
+
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -99,7 +95,7 @@ class SavedScreen extends StatelessWidget {
                               ],
                             ),
                           ),
-                          // Right: delete button
+
                           IconButton(
                             onPressed: () async {
                               await wardrobe.removeSavedById(outfit.id);
@@ -228,7 +224,6 @@ class SavedScreen extends StatelessWidget {
   }
 }
 
-/// Виджет, который рисует до 4 миниатюр наложением (overlapping)
 class _StackedThumbs extends StatelessWidget {
   final List<WardrobeItem> items;
   const _StackedThumbs({Key? key, required this.items}) : super(key: key);
@@ -239,10 +234,9 @@ class _StackedThumbs extends StatelessWidget {
     final show = items.length < maxShow ? items.length : maxShow;
     final thumbs = items.take(show).toList();
 
-    // размеры
     const double thumbWidth = 56;
     const double thumbHeight = 72;
-    const double overlap = 18; // на сколько сдвигаем следующую миниатюру влево
+    const double overlap = 18;
 
     return SizedBox(
       width: thumbWidth + (thumbs.length - 1) * (thumbWidth - overlap),
@@ -252,10 +246,7 @@ class _StackedThumbs extends StatelessWidget {
         children: List.generate(thumbs.length, (i) {
           final idx = i;
           final left = i * (thumbWidth - overlap);
-          final item =
-              thumbs[thumbs.length -
-                  1 -
-                  i]; // рисуем с конца, чтобы первый был сверху
+          final item = thumbs[thumbs.length - 1 - i];
           return Positioned(
             left: left,
             child: Material(

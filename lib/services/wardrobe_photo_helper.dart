@@ -1,5 +1,3 @@
-// Helper utilities for picking images and uploading to a backend (or converting to base64)
-// This file does NOT change your UI. It provides functions you can call from your screens.
 import 'dart:convert';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
@@ -10,8 +8,6 @@ import 'package:path/path.dart' as p;
 class WardrobePhotoHelper {
   final ImagePicker _picker = ImagePicker();
 
-  /// Pick an image from camera or gallery.
-  /// source: ImageSource.camera or ImageSource.gallery
   Future<File?> pickImage({required ImageSource source}) async {
     final XFile? picked = await _picker.pickImage(
       source: source,
@@ -23,7 +19,6 @@ class WardrobePhotoHelper {
     return File(picked.path);
   }
 
-  /// Convert a File to data:image/...;base64 string
   Future<String> fileToBase64DataUri(File file) async {
     final bytes = await file.readAsBytes();
     final mime = _detectMimeType(file.path);
@@ -47,8 +42,6 @@ class WardrobePhotoHelper {
     return 'application/octet-stream';
   }
 
-  /// Upload image file to your backend which should accept multipart/form-data.
-  /// Returns parsed JSON response from server.
   Future<Map<String, dynamic>> uploadToBackend({
     required String url,
     required File file,

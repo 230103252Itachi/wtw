@@ -1,4 +1,3 @@
-// lib/screens/add_item_screen.dart
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
@@ -51,14 +50,12 @@ class _AddItemScreenState extends State<AddItemScreen> {
 
       final savedFile = await _photoHelper.saveImagePermanently(_pickedFile!);
 
-      // 2) Add to wardrobe model (this should persist via Hive inside the model)
       final item = WardrobeItem(imagePath: savedFile.path, title: _category);
       await wardrobe.addItem(item);
       await AICache.put(savedFile.path, {'status': 'processing'});
-      // 3) Compress + call AI describe (in background)
+
       _processAndCacheImage(savedFile);
 
-      // 4) close screen
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       debugPrint('Save item error: $e');
@@ -71,22 +68,18 @@ class _AddItemScreenState extends State<AddItemScreen> {
     }
   }
 
-  /// Runs in background: compress -> call AI -> cache result
   Future<void> _processAndCacheImage(File file) async {
     try {
       debugPrint('[AI] process start for ${file.path}');
 
-      // Убедимся, что AICache инициализирован (опционально)
       if (!Hive.isBoxOpen('ai_cache')) {
         debugPrint('[AI] ai_cache box is not open — opening now');
         await Hive.openBox('ai_cache');
       }
 
-      // mark processing (if not already set)
       await AICache.put(file.path, {'status': 'processing'});
       debugPrint('[AI] status set to processing for ${file.path}');
 
-      // compress image (wrap in try/catch)
       File compressed;
       try {
         compressed = await compressImage(file);
@@ -101,7 +94,6 @@ class _AddItemScreenState extends State<AddItemScreen> {
         return;
       }
 
-      // call AI describe
       Map<String, dynamic> desc;
       try {
         final ai = AIStylistService();
@@ -116,7 +108,6 @@ class _AddItemScreenState extends State<AddItemScreen> {
         return;
       }
 
-      // save successful result (overwrite processing)
       await AICache.put(file.path, {
         ...desc,
         'status': 'done',
