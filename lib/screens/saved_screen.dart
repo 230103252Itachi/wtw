@@ -1,3 +1,4 @@
+// lib/screens/saved_screen.dart
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -6,7 +7,7 @@ import 'package:wtw/models/outfit.dart';
 import 'package:wtw/models/wardrobe_item.dart';
 
 class SavedScreen extends StatelessWidget {
-  const SavedScreen({Key? key}) : super(key: key);
+  const SavedScreen({super.key});
 
   static const int maxThumbs = 4;
 
@@ -16,25 +17,24 @@ class SavedScreen extends StatelessWidget {
     final saved = wardrobe.saved;
 
     return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text(
-          'Сохранённые образы',
+          'Saved Outfits',
           style: TextStyle(
             color: Color(0xFF4B4CFF),
             fontWeight: FontWeight.bold,
           ),
         ),
-        backgroundColor: Colors.white,
         elevation: 1,
-        foregroundColor: const Color(0xFF4B4CFF),
       ),
       body: Padding(
         padding: const EdgeInsets.all(12.0),
         child: saved.isEmpty
-            ? const Center(
+            ? Center(
                 child: Text(
-                  'Нет сохранённых образов',
-                  style: TextStyle(color: Colors.black54),
+                  'No saved outfits',
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
               )
             : ListView.separated(
@@ -49,7 +49,7 @@ class SavedScreen extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: Theme.of(context).cardColor,
                         borderRadius: BorderRadius.circular(14),
                         boxShadow: [
                           BoxShadow(
@@ -63,49 +63,48 @@ class SavedScreen extends StatelessWidget {
                         children: [
                           _StackedThumbs(items: items),
                           const SizedBox(width: 12),
-
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
                                   outfit.title,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleMedium
+                                      ?.copyWith(fontWeight: FontWeight.w600),
                                 ),
                                 const SizedBox(height: 6),
                                 Text(
                                   _formatDate(outfit.createdAtIso),
-                                  style: const TextStyle(
-                                    color: Colors.black54,
-                                    fontSize: 13,
-                                  ),
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(fontSize: 13),
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
                                   outfit.notes.isNotEmpty
                                       ? outfit.notes
-                                      : 'Без заметок',
+                                      : 'No notes',
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(color: Colors.black87),
+                                  style:
+                                      Theme.of(context).textTheme.bodyMedium,
                                 ),
                               ],
                             ),
                           ),
-
                           IconButton(
                             onPressed: () async {
                               await wardrobe.removeSavedById(outfit.id);
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Образ удалён')),
+                                const SnackBar(content: Text('Outfit deleted')),
                               );
                             },
-                            icon: const Icon(
+                            icon: Icon(
                               Icons.delete_outline,
-                              color: Colors.redAccent,
+                              color: Theme.of(context).colorScheme.error,
                             ),
                           ),
                         ],
@@ -118,7 +117,7 @@ class SavedScreen extends StatelessWidget {
     );
   }
 
-  String _formatDate(String iso) {
+  static String _formatDate(String iso) {
     try {
       final dt = DateTime.parse(iso).toLocal();
       return "${dt.day.toString().padLeft(2, '0')}.${dt.month.toString().padLeft(2, '0')}.${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}";
@@ -127,7 +126,7 @@ class SavedScreen extends StatelessWidget {
     }
   }
 
-  void _openOutfitDetails(
+  static void _openOutfitDetails(
     BuildContext context,
     Outfit outfit,
     List<WardrobeItem> items,
@@ -135,7 +134,7 @@ class SavedScreen extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).cardColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
@@ -154,15 +153,15 @@ class SavedScreen extends StatelessWidget {
                 children: [
                   Text(
                     outfit.title,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleLarge
+                        ?.copyWith(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 6),
                   Text(
                     _formatDate(outfit.createdAtIso),
-                    style: const TextStyle(color: Colors.black54),
+                    style: Theme.of(context).textTheme.bodySmall,
                   ),
                   const SizedBox(height: 12),
                   if (outfit.notes.isNotEmpty) ...[
@@ -184,20 +183,28 @@ class SavedScreen extends StatelessWidget {
                       final it = items[i];
                       return ClipRRect(
                         borderRadius: BorderRadius.circular(12),
-                        child: Column(
+                            child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             Expanded(
                               child: it.imagePath.isNotEmpty
-                                  ? Image.file(
-                                      File(it.imagePath),
-                                      fit: BoxFit.cover,
-                                    )
-                                  : Container(color: Colors.grey[200]),
+                                  ? it.isNetworkImage
+                                    ? Image.network(
+                                        it.imagePath,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) {
+                                          return Container(color: Theme.of(context).dividerColor);
+                                        },
+                                      )
+                                    : Image.file(
+                                        File(it.imagePath),
+                                        fit: BoxFit.cover,
+                                      )
+                                  : Container(color: Theme.of(context).dividerColor),
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              it.title ?? it.title ?? 'Item',
+                              it.title,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -211,7 +218,7 @@ class SavedScreen extends StatelessWidget {
                     alignment: Alignment.centerRight,
                     child: TextButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('Закрыть'),
+                      child: const Text('Close'),
                     ),
                   ),
                 ],
@@ -226,7 +233,7 @@ class SavedScreen extends StatelessWidget {
 
 class _StackedThumbs extends StatelessWidget {
   final List<WardrobeItem> items;
-  const _StackedThumbs({Key? key, required this.items}) : super(key: key);
+  const _StackedThumbs({required this.items});
 
   @override
   Widget build(BuildContext context) {
@@ -244,7 +251,6 @@ class _StackedThumbs extends StatelessWidget {
       child: Stack(
         clipBehavior: Clip.none,
         children: List.generate(thumbs.length, (i) {
-          final idx = i;
           final left = i * (thumbWidth - overlap);
           final item = thumbs[thumbs.length - 1 - i];
           return Positioned(
@@ -255,11 +261,19 @@ class _StackedThumbs extends StatelessWidget {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(10),
                 child: SizedBox(
-                  width: thumbWidth,
-                  height: thumbHeight,
-                  child: item.imagePath.isNotEmpty
-                      ? Image.file(File(item.imagePath), fit: BoxFit.cover)
-                      : Container(color: Colors.grey[200]),
+                    width: thumbWidth,
+                    height: thumbHeight,
+                    child: item.imagePath.isNotEmpty
+                      ? item.isNetworkImage
+                        ? Image.network(
+                            item.imagePath,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(color: Theme.of(context).dividerColor);
+                            },
+                          )
+                        : Image.file(File(item.imagePath), fit: BoxFit.cover)
+                      : Container(color: Theme.of(context).dividerColor),
                 ),
               ),
             ),

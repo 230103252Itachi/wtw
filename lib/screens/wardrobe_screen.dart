@@ -3,10 +3,9 @@ import 'package:provider/provider.dart';
 import 'package:wtw/models/wardrobe_item.dart';
 import 'package:wtw/models/wardrobe_model.dart';
 import 'package:wtw/screens/view_item_screen.dart';
-import 'package:wtw/services/ai_cache.dart';
 
 class WardrobeScreen extends StatefulWidget {
-  const WardrobeScreen({Key? key}) : super(key: key);
+  const WardrobeScreen({super.key});
 
   @override
   State<WardrobeScreen> createState() => _WardrobeScreenState();
@@ -35,15 +34,32 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
     categories.addAll(wardrobe.items.map((e) => e.title).toSet());
 
     return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Гардероб'),
-        foregroundColor: const Color(0xFF4B4CFF),
+        title: const Text(
+          'Wardrobe',
+          style: TextStyle(
+            color: Color(0xFF4B4CFF),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         elevation: 1,
         actions: [
           IconButton(
-            icon: const Icon(Icons.search, color: Color(0xFF4B4CFF)),
+            icon: const Icon(Icons.search),
             onPressed: () {
               _showSearchDialog();
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.bug_report),
+            tooltip: 'Diagnostic',
+            onPressed: () {
+              final wardrobe = Provider.of<WardrobeModel>(context, listen: false);
+              wardrobe.diagnosticCheckFirestore();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Check logs for diagnostic output')),
+              );
             },
           ),
         ],
@@ -74,7 +90,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                           ),
                           SizedBox(height: 8),
                           Text(
-                            'В гардеробе пока нет вещей',
+                            'No items in wardrobe',
                             style: TextStyle(color: Color(0xFF4B4CFF)),
                           ),
                         ],
@@ -134,31 +150,24 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
   }
 
   Widget _buildItemCard(WardrobeItem item, WardrobeModel wardrobe) {
-    final cached = AICache.get(item.imagePath);
-
     String previewText() {
       try {
-        if (cached == null) return 'Описание ИИ: нет';
-        if (cached is String)
-          return (cached.length > 60) ? '${cached.substring(0, 60)}…' : cached;
-        if (cached is Map) {
-          final map = Map<String, dynamic>.from(cached);
-
-          if (map['notes'] != null && map['notes'].toString().isNotEmpty) {
-            final s = map['notes'].toString();
+        if (item.metadata != null && item.metadata is Map) {
+          final meta = Map<String, dynamic>.from(item.metadata);
+          if (meta['notes'] != null && meta['notes'].toString().isNotEmpty) {
+            final s = meta['notes'].toString();
             return s.length > 60 ? '${s.substring(0, 60)}…' : s;
           }
-          if (map['category'] != null) return map['category'].toString();
-          if (map['style_tags'] != null &&
-              map['style_tags'] is List &&
-              (map['style_tags'] as List).isNotEmpty) {
-            return (map['style_tags'] as List).join(', ');
+          if (meta['category'] != null) return 'Category: ${meta['category']}';
+          if (meta['colors'] != null) return 'Colors: ${meta['colors']}';
+          if (meta['style_tags'] != null && meta['style_tags'] is List) {
+            return 'Style: ${(meta['style_tags'] as List).join(', ')}';
           }
-          return 'Описание ИИ: есть';
+          return 'AI processed';
         }
-        return 'Описание ИИ: неизвестный формат';
+        return 'Pending AI analysis...';
       } catch (e) {
-        return 'Описание ИИ: ошибка';
+        return 'No description';
       }
     }
 
@@ -177,7 +186,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
               minChildSize: 0.3,
               maxChildSize: 0.95,
               builder: (_, controller) {
-                final cachedLocal = AICache.get(item.imagePath);
+                final metadata = item.metadata;
                 return SingleChildScrollView(
                   controller: controller,
                   padding: const EdgeInsets.all(16),
@@ -196,12 +205,11 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                         ),
                       ),
                       Text(
-                        'Информация ИИ',
+                        'AI Information',
                         style: Theme.of(context).textTheme.titleMedium
                             ?.copyWith(fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 12),
-
                       ClipRRect(
                         borderRadius: BorderRadius.circular(12),
                         child: SizedBox(
@@ -211,12 +219,12 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      if (cachedLocal == null) ...[
+                      if (metadata == null) ...[
                         const Text(
-                          'Описание пока недоступно (AI ещё не обработал это фото).',
+                          'AI analysis pending or not available yet.',
                         ),
                       ] else ...[
-                        _buildDescriptionWidget(cachedLocal),
+                        _buildDescriptionWidget(metadata),
                       ],
                       const SizedBox(height: 20),
                       Row(
@@ -224,7 +232,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                           ElevatedButton.icon(
                             onPressed: () => Navigator.of(ctx).pop(),
                             icon: const Icon(Icons.close),
-                            label: const Text('Закрыть'),
+                            label: const Text('Close'),
                           ),
                           const SizedBox(width: 12),
                           ElevatedButton.icon(
@@ -236,7 +244,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                               );
                             },
                             icon: const Icon(Icons.open_in_full),
-                            label: const Text('Полный экран'),
+                            label: const Text('Full Screen'),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.grey[200],
                               foregroundColor: Colors.black,
@@ -256,6 +264,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
         _showItemOptions(item, wardrobe);
       },
       child: Card(
+        color: Theme.of(context).cardColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         elevation: 6,
         shadowColor: Colors.black12,
@@ -266,10 +275,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(16),
                 ),
-                child: Container(
-                  color: Colors.grey[100],
-                  child: item.imageWidget,
-                ),
+                child: item.imageWidget,
               ),
             ),
             Padding(
@@ -277,20 +283,23 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
               child: Row(
                 children: [
                   Expanded(
-                    child: Column(
+                      child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           item.title,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium
+                              ?.copyWith(fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 6),
                         Text(
                           previewText(),
-                          style: const TextStyle(
-                            color: Colors.black54,
-                            fontSize: 12,
-                          ),
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(fontSize: 12),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -298,13 +307,48 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.delete_outline,
-                      color: Colors.redAccent,
+                      color: Theme.of(context).colorScheme.error,
                     ),
                     onPressed: () async {
-                      await wardrobe.removeItem(item);
-                      await AICache.remove(item.imagePath);
+                      // Show confirmation dialog
+                      showDialog(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Delete Item?'),
+                          content: const Text('This will delete the item from your wardrobe and Firebase.'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx),
+                              child: const Text('Cancel'),
+                            ),
+                            TextButton(
+                              onPressed: () async {
+                                Navigator.pop(ctx);
+                                try {
+                                  await wardrobe.removeItem(item);
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('Item deleted')),
+                                    );
+                                  }
+                                } catch (e) {
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('Error: $e')),
+                                    );
+                                  }
+                                }
+                              },
+                              child: const Text(
+                                'Delete',
+                                style: TextStyle(color: Colors.red),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
                     },
                   ),
                 ],
@@ -318,7 +362,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
 
   Widget _buildDescriptionWidget(dynamic cached) {
     try {
-      if (cached == null) return const Text('Нет данных');
+      if (cached == null) return const Text('No data');
 
       if (cached is String) {
         return Text(cached);
@@ -326,7 +370,6 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
 
       if (cached is Map) {
         final map = Map<String, dynamic>.from(cached);
-
         final rows = <Widget>[];
 
         void addRow(String title, dynamic value) {
@@ -367,7 +410,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
 
       return Text(cached.toString());
     } catch (e) {
-      return Text('Ошибка отображения описания: $e');
+      return Text('Error displaying description: $e');
     }
   }
 
@@ -387,7 +430,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
               children: [
                 ListTile(
                   leading: const Icon(Icons.open_in_full),
-                  title: const Text('Открыть'),
+                  title: const Text('Open'),
                   onTap: () {
                     Navigator.of(ctx).pop();
                     Navigator.of(context).push(
@@ -400,12 +443,48 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                 ListTile(
                   leading: const Icon(Icons.delete, color: Colors.redAccent),
                   title: const Text(
-                    'Удалить',
+                    'Delete',
                     style: TextStyle(color: Colors.redAccent),
                   ),
                   onTap: () async {
                     Navigator.of(ctx).pop();
-                    await wardrobe.removeItem(item);
+                    // Show confirmation
+                    showDialog(
+                      context: context,
+                      builder: (dialogCtx) => AlertDialog(
+                        title: const Text('Delete Item?'),
+                        content: const Text('This will delete the item from your wardrobe and Firebase.'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(dialogCtx),
+                            child: const Text('Cancel'),
+                          ),
+                          TextButton(
+                            onPressed: () async {
+                              Navigator.pop(dialogCtx);
+                              try {
+                                await wardrobe.removeItem(item);
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Item deleted')),
+                                  );
+                                }
+                              } catch (e) {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Error: $e')),
+                                  );
+                                }
+                              }
+                            },
+                            child: const Text(
+                              'Delete',
+                              style: TextStyle(color: Colors.red),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
                   },
                 ),
               ],
@@ -422,25 +501,25 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
       builder: (ctx) {
         String temp = _search;
         return AlertDialog(
-          title: const Text('Поиск по гардеробу'),
+          title: const Text('Search Wardrobe'),
           content: TextField(
             autofocus: true,
             decoration: const InputDecoration(
-              hintText: 'Поиск по категории или пути',
+              hintText: 'Search by category or path',
             ),
             onChanged: (v) => temp = v,
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Отмена'),
+              child: const Text('Cancel'),
             ),
             TextButton(
               onPressed: () {
                 setState(() => _search = temp);
                 Navigator.of(ctx).pop();
               },
-              child: const Text('Искать'),
+              child: const Text('Search'),
             ),
           ],
         );

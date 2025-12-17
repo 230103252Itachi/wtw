@@ -1,6 +1,6 @@
 String getClothesRecommendation(double temp) {
-  if (temp >= 25) return "Жарко — футболка и шорты 😎";
-  if (temp >= 15) return "Тепло — худи или легкая куртка 🙂";
-  if (temp >= 5) return "Прохладно — свитер или кофта 🧣";
-  return "Холодно — теплая куртка, перчатки и шапка 🥶";
+  if (temp >= 25) return "Hot - t-shirt and shorts 😎";
+  if (temp >= 15) return "Warm - hoodie or light jacket 🙂";
+  if (temp >= 5) return "Cool - sweater or cardigan 🧣";
+  return "Cold - warm jacket, gloves and hat 🥶";
 }

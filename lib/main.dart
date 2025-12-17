@@ -1,38 +1,45 @@
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:firebase_core/firebase_core.dart';
+
 import 'package:wtw/models/wardrobe_model.dart';
 import 'package:wtw/screens/home_screen.dart';
 import 'package:wtw/screens/wardrobe_screen.dart';
 import 'package:wtw/screens/saved_screen.dart';
 import 'package:wtw/screens/profile_screen.dart';
 import 'package:wtw/models/wardrobe_item.dart';
-import 'package:wtw/services/ai_cache.dart';
-
 import 'package:wtw/screens/add_item_screen.dart';
-import 'package:wtw/services/fcm_service.dart';
+import 'package:wtw/services/openai_key_store.dart';
+import 'package:wtw/screens/login_screen.dart';
+import 'firebase_options.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
-  await Firebase.initializeApp();
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  final openaiKey = dotenv.env['OPENAI_API_KEY'];
+  if (openaiKey != null && openaiKey.isNotEmpty) {
+    await OpenAIKeyStore.saveKey(openaiKey);
+  }
+
   await Hive.initFlutter();
   Hive.registerAdapter(WardrobeItemAdapter());
   await Hive.openBox<WardrobeItem>('wardrobeBox');
 
   await Hive.openBox('settings');
-  await AICache.init();
   await Hive.openBox('savedOutfits');
-  await FCMService.init();
-  await FirebaseMessaging.instance.requestPermission();
   runApp(const WhatToWearApp());
 }
 
 class WhatToWearApp extends StatelessWidget {
-  const WhatToWearApp({Key? key}) : super(key: key);
+  const WhatToWearApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -62,14 +69,45 @@ class WhatToWearApp extends StatelessWidget {
               brightness: Brightness.dark,
               scaffoldBackgroundColor: Colors.black,
               primaryColor: const Color(0xFF4B4CFF),
+              primarySwatch: Colors.indigo,
+              useMaterial3: true,
               appBarTheme: const AppBarTheme(
                 backgroundColor: Colors.black,
                 foregroundColor: Colors.white,
                 elevation: 1,
               ),
+              inputDecorationTheme: InputDecorationTheme(
+                filled: true,
+                fillColor: Colors.grey[900],
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Colors.grey),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Colors.grey),
+                ),
+              ),
             ),
             themeMode: darkMode ? ThemeMode.dark : ThemeMode.light,
-            home: const MainTabs(),
+            home: StreamBuilder<User?>(
+              stream: FirebaseAuth.instance.authStateChanges(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Scaffold(
+                    body: Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                  );
+                }
+                
+                if (snapshot.hasData && snapshot.data != null) {
+                  return const MainTabs();
+                }
+                
+                return const LoginScreen();
+              },
+            ),
             routes: {
               '/addItem': (ctx) => const AddItemScreen(),
               '/profile': (ctx) => const ProfileScreen(),
@@ -82,7 +120,7 @@ class WhatToWearApp extends StatelessWidget {
 }
 
 class MainTabs extends StatefulWidget {
-  const MainTabs({Key? key}) : super(key: key);
+  const MainTabs({super.key});
 
   @override
   State<MainTabs> createState() => _MainTabsState();
@@ -97,6 +135,11 @@ class _MainTabsState extends State<MainTabs> {
     const SavedScreen(),
     const ProfileScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+  }
 
   void _onTap(int idx) {
     setState(() {

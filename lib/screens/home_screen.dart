@@ -7,10 +7,9 @@ import 'package:wtw/services/location_service.dart';
 import 'package:wtw/utils/clothes_recommendation.dart';
 import 'package:wtw/screens/saved_screen.dart';
 import 'package:wtw/services/ai_stylist_service.dart';
-import 'package:wtw/services/ai_cache.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+  const HomeScreen({super.key});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -41,14 +40,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
       if (position == null) {
         setState(() {
-          error = "Не удалось получить местоположение";
+          error = "Unable to get location";
           isLoading = false;
         });
         return;
       }
 
       final weatherService = WeatherService();
-
       double? temp = await weatherService.getTemperatureByCoords(
         position.latitude,
         position.longitude,
@@ -76,9 +74,9 @@ class _HomeScreenState extends State<HomeScreen> {
           isLoading = false;
         });
       } else {
+        // Try to parse from currentSummary fallback
         try {
           final summary = await weatherService.currentSummary();
-
           final parts = summary.split(',');
           if (parts.isNotEmpty) {
             condition = parts[0].trim();
@@ -98,14 +96,14 @@ class _HomeScreenState extends State<HomeScreen> {
           });
         } else {
           setState(() {
-            error = "Не удалось получить температуру";
+            error = "Unable to get temperature";
             isLoading = false;
           });
         }
       }
     } catch (e) {
       setState(() {
-        error = "Ошибка: $e";
+        error = "Error: $e";
         isLoading = false;
       });
     }
@@ -137,7 +135,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Flexible(
             child: isLoading
                 ? const Text(
-                    "Загрузка погоды...",
+                    "Loading weather...",
                     style: TextStyle(color: Colors.white, fontSize: 18),
                   )
                 : error != null
@@ -255,17 +253,18 @@ class _HomeScreenState extends State<HomeScreen> {
         width: double.infinity,
         height: 56,
         decoration: BoxDecoration(
-          color: filled ? const Color(0xFF4B4CFF) : Colors.white,
+          color: filled ? const Color(0xFF4B4CFF) : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: filled ? Colors.transparent : const Color(0xFF4B4CFF),
           ),
           boxShadow: [
-            BoxShadow(
-              color: Colors.black12.withOpacity(0.05),
-              blurRadius: 6,
-              offset: const Offset(0, 3),
-            ),
+            if (filled)
+              BoxShadow(
+                color: Colors.black12.withOpacity(0.05),
+                blurRadius: 6,
+                offset: const Offset(0, 3),
+              ),
           ],
         ),
         child: Row(
@@ -292,14 +291,14 @@ class _HomeScreenState extends State<HomeScreen> {
       children: [
         _roundedButton(
           icon: Icons.auto_awesome,
-          text: 'Сгенерировать образы',
+          text: 'Generate Outfits',
           onTap: () async {
             final wardrobe = Provider.of<WardrobeModel>(context, listen: false);
             final ai = AIStylistService();
 
             if (wardrobe.items.isEmpty) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Гардероб пуст. Добавьте вещи!')),
+                const SnackBar(content: Text('Wardrobe is empty. Add items!')),
               );
               return;
             }
@@ -310,38 +309,40 @@ class _HomeScreenState extends State<HomeScreen> {
               List<Map<String, dynamic>> itemsForAI = [];
 
               for (var item in wardrobe.items) {
-                final cache = await AICache.get(item.imagePath);
-
-                if (cache != null && cache['status'] == 'done') {
-                  itemsForAI.add({
-                    'id': item.key.toString(),
-                    'path': item.imagePath,
-                    ...cache,
-                  });
-                }
+                final metadata = item.metadata ?? {};
+                
+                itemsForAI.add({
+                  'id': item.id ?? 'unknown',
+                  'path': item.imagePath,
+                  'category': metadata['category'] ?? 'unknown',
+                  'colors': metadata['colors'] ?? ['neutral'],
+                  'material': metadata['material'] ?? 'fabric',
+                  'style_tags': metadata['style_tags'] ?? [],
+                  'pattern': metadata['pattern'] ?? 'solid',
+                  'warmth': metadata['warmth'] ?? 'moderate',
+                  'notes': metadata['notes'] ?? item.title,
+                });
               }
 
               if (itemsForAI.isEmpty) {
                 setState(() => isLoading = false);
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text(
-                      'Нет обработанных вещей. Откройте фото, чтобы ИИ дал описание.',
-                    ),
+                    content: Text('No items in wardrobe. Add some items first.'),
                   ),
                 );
                 return;
               }
 
-              final style = wardrobe.selectedStyle?.toLowerCase() ?? 'casual';
+              final style = wardrobe.selectedStyle.toLowerCase();
 
               final w = await WeatherService().getWeatherSummary();
               final weatherString = w ?? 'clear';
 
               final suggestion = await ai.generateOutfitFromDescriptions(
-                wardrobe: itemsForAI,
-                weather: weatherString,
-                occasion: style,
+                garments: itemsForAI,
+                clima: weatherString,
+                event: style,
               );
 
               final List<String> selectedIds =
@@ -349,22 +350,22 @@ class _HomeScreenState extends State<HomeScreen> {
                       ?.map((e) => e.toString())
                       .toList() ??
                   [];
-
+              
               final selectedItems = wardrobe.items.where((item) {
-                return selectedIds.contains(item.key.toString());
+                return selectedIds.contains(item.id ?? '');
               }).toList();
 
-              final notes = suggestion['notes'] ?? 'Нет пояснений';
+              final notes = suggestion['notes'] ?? 'No explanation';
 
               showDialog(
                 context: context,
                 builder: (_) => AlertDialog(
-                  title: const Text('Рекомендация AI-стилиста'),
+                  title: const Text('AI Stylist Recommendation'),
                   content: SingleChildScrollView(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(notes ?? 'Нет пояснений'),
+                        Text(notes ?? 'No explanation'),
                         const SizedBox(height: 12),
                         Wrap(
                           spacing: 8,
@@ -384,33 +385,41 @@ class _HomeScreenState extends State<HomeScreen> {
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('Закрыть'),
+                      child: const Text('Close'),
                     ),
                     TextButton(
                       onPressed: () async {
-                        final wardrobeModel = Provider.of<WardrobeModel>(
-                          context,
-                          listen: false,
-                        );
-                        final itemKeys = selectedItems
-                            .map((i) => i.key?.toString() ?? i.imagePath)
-                            .toList();
-
-                        await wardrobeModel.saveOutfit(
-                          title:
-                              'AI suggestion • ${DateTime.now().toLocal().toString().split('.')[0]}',
-                          itemKeys: itemKeys,
-                          notes: notes ?? '',
-                        );
-
-                        if (mounted) {
-                          Navigator.of(context).pop();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Образ сохранён')),
+                        try {
+                          final wardrobeModel = Provider.of<WardrobeModel>(
+                            context,
+                            listen: false,
                           );
+                          final itemKeys = selectedItems
+                              .map((i) => i.id ?? '')
+                              .toList();
+
+                          await wardrobeModel.saveOutfit(
+                            title:
+                                'AI suggestion • ${DateTime.now().toLocal().toString().split('.')[0]}',
+                            itemKeys: itemKeys,
+                            notes: notes ?? '',
+                          );
+
+                          if (mounted) {
+                            Navigator.of(context).pop();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Outfit saved')),
+                            );
+                          }
+                        } catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Error: $e')),
+                            );
+                          }
                         }
                       },
-                      child: const Text('Сохранить'),
+                      child: const Text('Save'),
                     ),
                   ],
                 ),
@@ -418,7 +427,7 @@ class _HomeScreenState extends State<HomeScreen> {
             } catch (e) {
               ScaffoldMessenger.of(
                 context,
-              ).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
+              ).showSnackBar(SnackBar(content: Text('Error: $e')));
             } finally {
               if (mounted) setState(() => isLoading = false);
             }
@@ -428,7 +437,7 @@ class _HomeScreenState extends State<HomeScreen> {
         const SizedBox(height: 12),
         _roundedButton(
           icon: Icons.bookmark_border,
-          text: 'Сохранённые',
+          text: 'Saved',
           onTap: () {
             Navigator.push(
               context,
@@ -449,7 +458,7 @@ class _HomeScreenState extends State<HomeScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).scaffoldBackgroundColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -463,7 +472,7 @@ class _HomeScreenState extends State<HomeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Рекомендации',
+            'Recommendations',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -474,7 +483,7 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 12),
           if (wardrobe.items.isEmpty)
             const Text(
-              'Добавьте вещи в гардероб и выберите стиль.',
+              'Add items to your wardrobe and select a style.',
               style: TextStyle(
                 fontSize: 15,
                 color: Colors.black54,
@@ -503,7 +512,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: item.imageWidget,
                       ),
                     ),
-
                     title: Text(
                       item.title,
                       style: const TextStyle(
@@ -512,7 +520,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     subtitle: const Text(
-                      'Идеально для вашей погоды!',
+                      'Perfect for your weather!',
                       style: TextStyle(fontFamily: 'Poppins'),
                     ),
                   ),
@@ -529,6 +537,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final wardrobe = Provider.of<WardrobeModel>(context);
 
     return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         elevation: 2,
         centerTitle: true,

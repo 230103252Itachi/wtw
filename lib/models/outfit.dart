@@ -28,6 +28,7 @@ class Outfit {
   }
 
   Map<String, dynamic> toMap() {
+    debugPrint('[Outfit] toMap: id=$id, title=$title, itemKeys=$itemKeys');
     return {
       'id': id,
       'title': title,
@@ -38,10 +39,12 @@ class Outfit {
   }
 
   factory Outfit.fromMap(Map<String, dynamic> m) {
+    final keys = List<String>.from(m['itemKeys'] ?? []);
+    debugPrint('[Outfit] fromMap: id=${m['id']}, title=${m['title']}, itemKeys=$keys');
     return Outfit(
       id: m['id']?.toString() ?? DateTime.now().toIso8601String(),
       title: m['title'] ?? 'Outfit',
-      itemKeys: List<String>.from(m['itemKeys'] ?? []),
+      itemKeys: keys,
       notes: m['notes'] ?? '',
       createdAtIso: m['createdAt'] ?? DateTime.now().toIso8601String(),
     );

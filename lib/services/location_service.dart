@@ -7,7 +7,6 @@ class LocationService {
 
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      print("Сервис геолокации отключен");
       return null;
     }
 
@@ -15,13 +14,11 @@ class LocationService {
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
-        print("Разрешение на геолокацию отклонено");
         return null;
       }
     }
 
     if (permission == LocationPermission.deniedForever) {
-      print("Разрешение навсегда отклонено");
       return null;
     }
 

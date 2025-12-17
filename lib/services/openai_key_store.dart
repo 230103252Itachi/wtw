@@ -2,7 +2,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class OpenAIKeyStore {
   static final _storage = FlutterSecureStorage();
-  static const _key = '';
+  static const _key = 'openai_api_key';
 
   static Future<void> saveKey(String apiKey) =>
       _storage.write(key: _key, value: apiKey);

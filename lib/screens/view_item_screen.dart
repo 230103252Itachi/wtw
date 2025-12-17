@@ -4,18 +4,22 @@ import 'package:provider/provider.dart';
 import 'package:wtw/models/wardrobe_item.dart';
 import 'package:wtw/models/wardrobe_model.dart';
 
-class ViewItemScreen extends StatelessWidget {
+class ViewItemScreen extends StatefulWidget {
   final String? imagePathArg;
   final WardrobeItem? itemArg;
 
-  const ViewItemScreen({Key? key, this.imagePathArg, this.itemArg})
-    : super(key: key);
+  const ViewItemScreen({super.key, this.imagePathArg, this.itemArg});
 
+  @override
+  State<ViewItemScreen> createState() => _ViewItemScreenState();
+}
+
+class _ViewItemScreenState extends State<ViewItemScreen> {
   @override
   Widget build(BuildContext context) {
     final routeArg = ModalRoute.of(context)?.settings.arguments;
-    WardrobeItem? item = itemArg;
-    String? imagePath = imagePathArg;
+    WardrobeItem? item = widget.itemArg;
+    String? imagePath = widget.imagePathArg;
 
     if (routeArg != null) {
       if (routeArg is WardrobeItem) {
@@ -44,23 +48,39 @@ class ViewItemScreen extends StatelessWidget {
                 final ok = await showDialog<bool>(
                   context: context,
                   builder: (ctx) => AlertDialog(
-                    title: const Text('Удалить вещь?'),
-                    content: const Text('Эта вещь будет удалена из гардероба.'),
+                    title: const Text('Delete Item?'),
+                    content: const Text('This will delete the item from your wardrobe, Firebase Storage, and Firestore.'),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.of(ctx).pop(false),
-                        child: const Text('Отмена'),
+                        child: const Text('Cancel'),
                       ),
                       TextButton(
                         onPressed: () => Navigator.of(ctx).pop(true),
-                        child: const Text('Удалить'),
+                        child: Text(
+                          'Delete',
+                          style: TextStyle(color: Colors.red.shade700),
+                        ),
                       ),
                     ],
                   ),
                 );
                 if (ok == true) {
-                  await wardrobe.removeItem(item!);
-                  if (Navigator.canPop(context)) Navigator.pop(context);
+                  try {
+                    await wardrobe.removeItem(item!);
+                    if (mounted && Navigator.canPop(context)) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Item deleted')),
+                      );
+                      Navigator.pop(context);
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error: $e')),
+                      );
+                    }
+                  }
                 }
               },
             ),
@@ -95,7 +115,7 @@ class ViewItemScreen extends StatelessWidget {
                           );
                         }
                         return _buildNotFound(
-                          message: 'Изображение не найдено\nПуть: $imagePath',
+                          message: 'Image not found\nPath: $imagePath',
                         );
                       },
                     ),
@@ -115,7 +135,7 @@ class ViewItemScreen extends StatelessWidget {
           const Icon(Icons.broken_image, size: 80, color: Colors.white24),
           const SizedBox(height: 12),
           Text(
-            message ?? 'Изображение не найдено',
+            message ?? 'Image not found',
             textAlign: TextAlign.center,
             style: const TextStyle(color: Colors.white54),
           ),

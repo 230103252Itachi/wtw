@@ -1,127 +1,145 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:hive/hive.dart';
 import 'package:provider/provider.dart';
 import 'package:wtw/models/wardrobe_item.dart';
 import 'package:wtw/models/wardrobe_model.dart';
 import 'package:wtw/services/wardrobe_photo_helper.dart';
 import 'package:wtw/utils/image_compress.dart';
 import 'package:wtw/services/ai_stylist_service.dart';
-import 'package:wtw/services/ai_cache.dart';
+import 'package:wtw/services/firebase_wardrobe_service.dart';
 import 'package:image_picker/image_picker.dart';
 
 class AddItemScreen extends StatefulWidget {
-  const AddItemScreen({Key? key}) : super(key: key);
+  const AddItemScreen({super.key});
 
   @override
   State<AddItemScreen> createState() => _AddItemScreenState();
 }
 
 class _AddItemScreenState extends State<AddItemScreen> {
-  final WardrobePhotoHelper _photoHelper = WardrobePhotoHelper();
-  File? _pickedFile;
-  String _category = '';
-  bool _saving = false;
+  final WardrobePhotoHelper _helper = WardrobePhotoHelper();
+  File? _img;
+  String _name = '';
+  bool _isSaving = false;
 
-  Future<void> _pickFromGallery() async {
-    final file = await _photoHelper.pickImage(source: ImageSource.gallery);
-    if (file == null) return;
-    setState(() => _pickedFile = file);
+  Future<void> _galleryPick() async {
+    final f = await _helper.pickImage(source: ImageSource.gallery);
+    if (f == null) return;
+    setState(() => _img = f);
   }
 
-  Future<void> _pickFromCamera() async {
-    final file = await _photoHelper.pickImage(source: ImageSource.camera);
-    if (file == null) return;
-    setState(() => _pickedFile = file);
+  Future<void> _cameraPick() async {
+    final f = await _helper.pickImage(source: ImageSource.camera);
+    if (f == null) return;
+    setState(() => _img = f);
   }
 
-  Future<void> _saveItem() async {
-    if (_pickedFile == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Выберите фото')));
+  Future<void> _save() async {
+    if (_img == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Select image')),
+      );
       return;
     }
-    if (_category.trim().isEmpty) _category = 'Untitled';
+    
+    if (_name.trim().isEmpty) _name = 'Item';
 
-    setState(() => _saving = true);
+    setState(() => _isSaving = true);
     try {
-      final wardrobe = Provider.of<WardrobeModel>(context, listen: false);
+      final wmodel = Provider.of<WardrobeModel>(context, listen: false);
 
-      final savedFile = await _photoHelper.saveImagePermanently(_pickedFile!);
-
-      final item = WardrobeItem(imagePath: savedFile.path, title: _category);
-      await wardrobe.addItem(item);
-      await AICache.put(savedFile.path, {'status': 'processing'});
-
-      _processAndCacheImage(savedFile);
-
-      if (mounted) Navigator.of(context).pop();
+      final savedF = await _helper.saveImagePermanently(_img!);
+      final newItem = WardrobeItem(
+        imagePath: savedF.path,
+        title: _name,
+        id: null,
+      );
+      await wmodel.addItem(newItem);
+      
+      if (mounted) {
+        setState(() => _isSaving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Saved! Processing...'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+        Navigator.of(context).pop();
+      }
+      
+      _bgUploadAndProcess(savedF, _name);
+      
     } catch (e) {
-      debugPrint('Save item error: $e');
-      if (mounted)
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
-    } finally {
-      if (mounted) setState(() => _saving = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+        setState(() => _isSaving = false);
+      }
     }
   }
 
-  Future<void> _processAndCacheImage(File file) async {
-    try {
-      debugPrint('[AI] process start for ${file.path}');
+  void _bgUploadAndProcess(File f, String cat) {
+    _bgAsync(f, cat);
+  }
 
-      if (!Hive.isBoxOpen('ai_cache')) {
-        debugPrint('[AI] ai_cache box is not open — opening now');
-        await Hive.openBox('ai_cache');
+  Future<void> _bgAsync(File f, String cat) async {
+    String? itemId;
+    try {
+      final fb = FirebaseWardrobeService.instance;
+      itemId = await fb.uploadItemWithPhoto(
+        photoFile: f,
+        category: cat,
+      );
+      
+      await Future.delayed(const Duration(milliseconds: 1000));
+    } catch (e) {
+      return;
+    }
+
+    try {
+      await _aiProcess(f, itemId: itemId);
+    } catch (e) {
+      return;
+    }
+  }
+
+  Future<void> _aiProcess(File f, {String? itemId}) async {
+    try {
+      if (itemId == null || itemId.isEmpty) {
+        return;
       }
 
-      await AICache.put(file.path, {'status': 'processing'});
-      debugPrint('[AI] status set to processing for ${file.path}');
-
-      File compressed;
+      File comp;
       try {
-        compressed = await compressImage(file);
-        final size = await compressed.length();
-        debugPrint('[AI] compressed file size=$size bytes for ${file.path}');
-      } catch (e, st) {
-        debugPrint('[AI] compress failed: $e\n$st');
-        await AICache.put(file.path, {
-          'status': 'error',
-          'error': 'compress_failed: $e',
-        });
+        comp = await compressImage(f);
+      } catch (e) {
         return;
       }
 
       Map<String, dynamic> desc;
       try {
-        final ai = AIStylistService();
-        desc = await ai.describeClothes(compressed);
-        debugPrint('[AI] describe result for ${file.path}: $desc');
-      } catch (e, st) {
-        debugPrint('[AI] describeClothes failed: $e\n$st');
-        await AICache.put(file.path, {
-          'status': 'error',
-          'error': e.toString(),
-        });
+        final aiSvc = AIStylistService();
+        desc = await aiSvc.describeClothes(comp);
+      } catch (e) {
         return;
       }
 
-      await AICache.put(file.path, {
+      final saveData = {
         ...desc,
-        'status': 'done',
-        'updated_at': DateTime.now().toIso8601String(),
-      });
-      debugPrint('[AI] saved description into cache for ${file.path}');
-    } catch (e, st) {
-      debugPrint('[AI] unexpected error: $e\n$st');
-      try {
-        await AICache.put(file.path, {
-          'status': 'error',
-          'error': e.toString(),
-        });
-      } catch (_) {}
+        'processed_at': DateTime.now().toIso8601String(),
+      };
+      
+      if (itemId.isNotEmpty) {
+        try {
+          final fb = FirebaseWardrobeService.instance;
+          await fb.updateItemWithAIData(itemId, saveData);
+        } catch (e) {
+          return;
+        }
+      }
+    } catch (e) {
+      return;
     }
   }
 
@@ -129,7 +147,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Добавить вещь'),
+        title: const Text('Add Item'),
         foregroundColor: const Color(0xFF4B4CFF),
         elevation: 1,
       ),
@@ -139,7 +157,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
           children: [
             Expanded(
               child: Center(
-                child: _pickedFile == null
+                child: _img == null
                     ? Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -147,36 +165,36 @@ class _AddItemScreenState extends State<AddItemScreen> {
                           const SizedBox(height: 12),
                           ElevatedButton.icon(
                             icon: const Icon(Icons.photo_library),
-                            label: const Text('Галерея'),
-                            onPressed: _pickFromGallery,
+                            label: const Text('Gallery'),
+                            onPressed: _galleryPick,
                           ),
                           const SizedBox(height: 8),
                           OutlinedButton.icon(
                             icon: const Icon(Icons.camera_alt),
-                            label: const Text('Камера'),
-                            onPressed: _pickFromCamera,
+                            label: const Text('Camera'),
+                            onPressed: _cameraPick,
                           ),
                         ],
                       )
-                    : Image.file(_pickedFile!, fit: BoxFit.contain),
+                    : Image.file(_img!, fit: BoxFit.contain),
               ),
             ),
             TextField(
-              decoration: const InputDecoration(labelText: 'Название'),
-              onChanged: (v) => _category = v,
+              decoration: const InputDecoration(labelText: 'Name'),
+              onChanged: (v) => _name = v,
             ),
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
               height: 48,
               child: ElevatedButton(
-                onPressed: _saving ? null : _saveItem,
-                child: _saving
-                    ? const CircularProgressIndicator()
-                    : const Text('Сохранить'),
+                onPressed: _isSaving ? null : _save,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF4B4CFF),
                 ),
+                child: _isSaving
+                    ? const CircularProgressIndicator()
+                    : const Text('Save'),
               ),
             ),
           ],
