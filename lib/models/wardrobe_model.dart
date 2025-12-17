@@ -5,6 +5,7 @@ import '../models/outfit.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/firebase_wardrobe_service.dart';
 import 'package:uuid/uuid.dart';
+import 'dart:async';
 
 class WardrobeModel extends ChangeNotifier {
   final List<WardrobeItem> _items = [];
@@ -14,11 +15,14 @@ class WardrobeModel extends ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseWardrobeService _firebaseService = FirebaseWardrobeService.instance;
+  
+  StreamSubscription? _itemsSubscription;
+  StreamSubscription? _outfitsSubscription;
+  String? _currentUserId;
 
   WardrobeModel() {
     instance = this;
-    _initializeFirebaseListener();
-    _initializeOutfitsListener();
+    _setupAuthListener();
   }
 
   String _selectedStyle = 'Casual';
@@ -27,12 +31,44 @@ class WardrobeModel extends ChangeNotifier {
   List<WardrobeItem> get items => List.unmodifiable(_items);
   List<Outfit> get saved => List.unmodifiable(_saved);
   
+  // Listen to auth state changes
+  void _setupAuthListener() {
+    _auth.authStateChanges().listen((user) {
+      if (user != null && user.uid != _currentUserId) {
+        debugPrint('[Wardrobe] 🔄 User switched to: ${user.uid}');
+        _currentUserId = user.uid;
+        _resetAndInitialize();
+      } else if (user == null) {
+        debugPrint('[Wardrobe] 🚪 User logged out');
+        _currentUserId = null;
+        _clearAllData();
+      }
+    });
+  }
+  
+  // Reset and reinitialize listeners for new user
+  void _resetAndInitialize() {
+    _clearAllData();
+    _initializeFirebaseListener();
+    _initializeOutfitsListener();
+  }
+  
+  // Clear all data without notifying
+  void _clearAllData() {
+    _itemsSubscription?.cancel();
+    _outfitsSubscription?.cancel();
+    _items.clear();
+    _saved.clear();
+    debugPrint('[Wardrobe] 🗑️ All data cleared');
+    notifyListeners(); // Notify UI to update
+  }
+  
   // Initialize real-time listener from Firestore
   void _initializeFirebaseListener() {
     final user = _auth.currentUser;
     if (user != null) {
       debugPrint('[Wardrobe] Initializing Firebase listener for user: ${user.uid}');
-      _firestore
+      _itemsSubscription = _firestore
           .collection('users')
           .doc(user.uid)
           .collection('wardrobe')
@@ -51,7 +87,7 @@ class WardrobeModel extends ChangeNotifier {
     final user = _auth.currentUser;
     if (user != null) {
       debugPrint('[Wardrobe] Initializing outfits listener for user: ${user.uid}');
-      _firestore
+      _outfitsSubscription = _firestore
           .collection('users')
           .doc(user.uid)
           .collection('outfits')
