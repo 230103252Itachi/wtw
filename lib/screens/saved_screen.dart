@@ -7,7 +7,7 @@ import 'package:wtw/models/outfit.dart';
 import 'package:wtw/models/wardrobe_item.dart';
 
 class SavedScreen extends StatelessWidget {
-  const SavedScreen({Key? key}) : super(key: key);
+  const SavedScreen({super.key});
 
   static const int maxThumbs = 4;
 
@@ -43,7 +43,10 @@ class SavedScreen extends StatelessWidget {
                 itemBuilder: (ctx, idx) {
                   final outfit = saved[idx];
                   // Resolve real WardrobeItem objects by keys (this uses your provider helper)
+                  debugPrint('[SavedScreen] Loading outfit: ${outfit.title}');
+                  debugPrint('[SavedScreen] outfit.itemKeys: ${outfit.itemKeys}');
                   final items = wardrobe.getItemsByKeys(outfit.itemKeys);
+                  debugPrint('[SavedScreen] Resolved ${items.length} items for outfit');
 
                   return GestureDetector(
                     onTap: () => _openOutfitDetails(context, outfit, items),
@@ -189,11 +192,19 @@ class SavedScreen extends StatelessWidget {
                           children: [
                             Expanded(
                               child: it.imagePath.isNotEmpty
-                                  ? Image.file(
-                                      File(it.imagePath),
-                                      fit: BoxFit.cover,
-                                    )
-                                      : Container(color: Theme.of(context).dividerColor),
+                                  ? it.isNetworkImage
+                                    ? Image.network(
+                                        it.imagePath,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) {
+                                          return Container(color: Theme.of(context).dividerColor);
+                                        },
+                                      )
+                                    : Image.file(
+                                        File(it.imagePath),
+                                        fit: BoxFit.cover,
+                                      )
+                                  : Container(color: Theme.of(context).dividerColor),
                             ),
                             const SizedBox(height: 8),
                             Text(
@@ -226,10 +237,11 @@ class SavedScreen extends StatelessWidget {
 
 class _StackedThumbs extends StatelessWidget {
   final List<WardrobeItem> items;
-  const _StackedThumbs({Key? key, required this.items}) : super(key: key);
+  const _StackedThumbs({super.key, required this.items});
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('[StackedThumbs] Building with ${items.length} items');
     final maxShow = SavedScreen.maxThumbs;
     final show = items.length < maxShow ? items.length : maxShow;
     final thumbs = items.take(show).toList();
@@ -257,7 +269,15 @@ class _StackedThumbs extends StatelessWidget {
                     width: thumbWidth,
                     height: thumbHeight,
                     child: item.imagePath.isNotEmpty
-                      ? Image.file(File(item.imagePath), fit: BoxFit.cover)
+                      ? item.isNetworkImage
+                        ? Image.network(
+                            item.imagePath,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(color: Theme.of(context).dividerColor);
+                            },
+                          )
+                        : Image.file(File(item.imagePath), fit: BoxFit.cover)
                       : Container(color: Theme.of(context).dividerColor),
                 ),
               ),

@@ -19,17 +19,23 @@ class WardrobeItemAdapter extends TypeAdapter<WardrobeItem> {
     return WardrobeItem(
       imagePath: fields[0] as String,
       title: fields[1] as String,
+      metadata: fields[2] as dynamic,
+      id: fields[3] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, WardrobeItem obj) {
     writer
-      ..writeByte(2)
+      ..writeByte(4)
       ..writeByte(0)
       ..write(obj.imagePath)
       ..writeByte(1)
-      ..write(obj.title);
+      ..write(obj.title)
+      ..writeByte(2)
+      ..write(obj.metadata)
+      ..writeByte(3)
+      ..write(obj.id);
   }
 
   @override

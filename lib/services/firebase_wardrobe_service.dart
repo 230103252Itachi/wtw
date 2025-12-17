@@ -29,6 +29,7 @@ class FirebaseWardrobeService {
 
     // Generate unique ID for the item
     final itemId = _uuid.v4();
+    debugPrint('[Firebase] Generated itemId: $itemId');
 
     try {
       debugPrint('[Firebase] Uploading photo to Storage...');
@@ -55,20 +56,27 @@ class FirebaseWardrobeService {
       debugPrint('[Firebase] Saving metadata to Firestore...');
       
       // Save item metadata to Firestore
-      await _firestore.collection('users').doc(user.uid).collection('wardrobe').doc(itemId).set({
-        'id': itemId,
-        'userId': user.uid,
-        'title': category,
-        'photoUrl': photoUrl,
-        'storagePath': photoRef.fullPath,
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+      try {
+        await _firestore.collection('users').doc(user.uid).collection('wardrobe').doc(itemId).set({
+          'id': itemId,
+          'userId': user.uid,
+          'title': category,
+          'photoUrl': photoUrl,
+          'storagePath': photoRef.fullPath,
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+        debugPrint('[Firebase] ✅ Metadata saved successfully');
+      } catch (e, st) {
+        debugPrint('[Firebase] ❌ Error saving metadata: $e\n$st');
+        // Don't rethrow - we still want to return itemId so AI processing can start
+        // The Stream listener will eventually get the data
+      }
 
-      debugPrint('[Firebase] Metadata saved successfully');
+      debugPrint('[Firebase] ✅ Returning itemId: $itemId');
       return itemId;
-    } catch (e) {
-      debugPrint('[Firebase] Upload error: $e');
+    } catch (e, st) {
+      debugPrint('[Firebase] ❌ Upload error: $e\n$st');
       throw Exception('Failed to upload item: $e');
     }
   }
@@ -108,6 +116,51 @@ class FirebaseWardrobeService {
       return doc.data();
     } catch (e) {
       throw Exception('Failed to fetch item: $e');
+    }
+  }
+
+  // Update item with AI-generated characteristics
+  Future<void> updateItemWithAIData(
+    String itemId,
+    Map<String, dynamic> aiData,
+  ) async {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception('User not authenticated');
+
+    try {
+      debugPrint('[Firebase] 🤖 Updating item $itemId with AI data for user ${user.uid}');
+      debugPrint('[Firebase]   Raw AI Data: $aiData');
+      
+      // Extract only AI fields we want to store with proper defaults
+      final updateData = {
+        'category': aiData['category'] ?? 'Unknown',
+        'colors': aiData['colors'] ?? ['neutral'],
+        'material': aiData['material'] ?? 'Unknown',
+        'style_tags': aiData['style_tags'] ?? [],
+        'pattern': aiData['pattern'] ?? 'Unknown',
+        'warmth': aiData['warmth'] ?? 'Unknown',
+        'notes': aiData['notes'] ?? '',
+        'ai_processed_at': FieldValue.serverTimestamp(),
+      };
+
+      debugPrint('[Firebase]   Processed data: $updateData');
+      
+      // Update the Firestore document
+      final docRef = _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('wardrobe')
+          .doc(itemId);
+      
+      debugPrint('[Firebase]   Firestore path: users/${user.uid}/wardrobe/$itemId');
+
+      // Use set with merge to ensure document is updated even if it doesn't exist yet
+      await docRef.set(updateData, SetOptions(merge: true));
+      
+      debugPrint('[Firebase] ✅ Item $itemId updated with AI data successfully');
+    } catch (e, st) {
+      debugPrint('[Firebase] ❌ Error updating item with AI data: $e\n$st');
+      rethrow;
     }
   }
 

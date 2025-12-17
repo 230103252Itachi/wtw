@@ -98,35 +98,81 @@ class AIStylistService {
     );
 
     if (resp.statusCode != 200) {
+      debugPrint('[OpenAI] HTTP error ${resp.statusCode}: ${resp.body}');
       return {
-        'status': 'error',
-        'error':
-            'OpenAI describeClothes error: ${resp.statusCode} ${resp.body}',
+        'category': 'Unknown',
+        'colors': ['neutral'],
+        'material': 'Unknown',
+        'style_tags': ['unprocessed'],
+        'pattern': 'Unknown',
+        'warmth': 'Unknown',
+        'notes': 'AI processing failed (HTTP ${resp.statusCode})',
       };
     }
 
-    final decoded = jsonDecode(resp.body);
-    final content = decoded["choices"]?[0]?["message"]?["content"] as String?;
-    if (content == null)
-      return {
-        'status': 'error',
-        'error': 'Empty content from OpenAI',
-        'raw': resp.body,
-      };
-
-    String cleaned = content.replaceAll(RegExp(r'```(?:json)?'), '').trim();
-    final idx = cleaned.indexOf('{');
-    if (idx > 0) cleaned = cleaned.substring(idx);
-
     try {
-      final parsed = jsonDecode(cleaned);
-      if (parsed is Map<String, dynamic>) {
-        return {...parsed, 'status': 'done'};
-      } else {
-        return {'status': 'done', 'raw_parsed': parsed};
+      final decoded = jsonDecode(resp.body);
+      final content = decoded["choices"]?[0]?["message"]?["content"] as String?;
+      
+      if (content == null) {
+        debugPrint('[OpenAI] Empty content from OpenAI. Full response: ${resp.body}');
+        return {
+          'category': 'Unknown',
+          'colors': ['neutral'],
+          'material': 'Unknown',
+          'style_tags': ['unprocessed'],
+          'pattern': 'Unknown',
+          'warmth': 'Unknown',
+          'notes': 'AI returned empty response',
+        };
+      }
+
+      String cleaned = content.replaceAll(RegExp(r'```(?:json)?'), '').trim();
+      final idx = cleaned.indexOf('{');
+      if (idx > 0) cleaned = cleaned.substring(idx);
+
+      debugPrint('[OpenAI] Cleaned content: $cleaned');
+      
+      try {
+        final parsed = jsonDecode(cleaned);
+        if (parsed is Map<String, dynamic>) {
+          debugPrint('[OpenAI] Successfully parsed AI response');
+          return parsed;
+        } else {
+          debugPrint('[OpenAI] Parsed response is not a map: $parsed');
+          return {
+            'category': 'Unknown',
+            'colors': ['neutral'],
+            'material': 'Unknown',
+            'style_tags': ['unprocessed'],
+            'pattern': 'Unknown',
+            'warmth': 'Unknown',
+            'notes': 'AI returned unexpected format',
+          };
+        }
+      } catch (parseErr) {
+        debugPrint('[OpenAI] JSON parse error: $parseErr. Cleaned string was: $cleaned');
+        return {
+          'category': 'Unknown',
+          'colors': ['neutral'],
+          'material': 'Unknown',
+          'style_tags': ['unprocessed'],
+          'pattern': 'Unknown',
+          'warmth': 'Unknown',
+          'notes': 'AI returned invalid JSON',
+        };
       }
     } catch (e) {
-      return {'status': 'done', 'raw': cleaned};
+      debugPrint('[OpenAI] Unexpected error while parsing: $e, response body: ${resp.body}');
+      return {
+        'category': 'Unknown',
+        'colors': ['neutral'],
+        'material': 'Unknown',
+        'style_tags': ['unprocessed'],
+        'pattern': 'Unknown',
+        'warmth': 'Unknown',
+        'notes': 'AI processing error',
+      };
     }
   }
 

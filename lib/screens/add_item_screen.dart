@@ -1,19 +1,18 @@
 // lib/screens/add_item_screen.dart
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:hive/hive.dart';
 import 'package:provider/provider.dart';
 import 'package:wtw/models/wardrobe_item.dart';
 import 'package:wtw/models/wardrobe_model.dart';
 import 'package:wtw/services/wardrobe_photo_helper.dart';
 import 'package:wtw/utils/image_compress.dart';
 import 'package:wtw/services/ai_stylist_service.dart';
-import 'package:wtw/services/ai_cache.dart';
 import 'package:wtw/services/firebase_wardrobe_service.dart';
 import 'package:image_picker/image_picker.dart';
+import 'dart:async';
 
 class AddItemScreen extends StatefulWidget {
-  const AddItemScreen({Key? key}) : super(key: key);
+  const AddItemScreen({super.key});
 
   @override
   State<AddItemScreen> createState() => _AddItemScreenState();
@@ -53,7 +52,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
       // Save locally first (fast)
       debugPrint('[AddItem] Saving image locally...');
       final savedFile = await _photoHelper.saveImagePermanently(_pickedFile!);
-      final item = WardrobeItem(imagePath: savedFile.path, title: _category);
+      final item = WardrobeItem(imagePath: savedFile.path, title: _category, id: null);
       await wardrobe.addItem(item);
       
       debugPrint('[AddItem] Local save complete, closing screen...');
@@ -85,111 +84,109 @@ class _AddItemScreenState extends State<AddItemScreen> {
     }
   }
 
-  Future<String?> _uploadToFirebaseInBackground(File file, String category) async {
+  // Executes Firebase upload AND AI processing in background (non-blocking)
+  void _uploadAndProcessInBackground(File file, String category) {
+    debugPrint('[BG] ⏳ Starting background upload and AI processing...');
+    debugPrint('[BG] File path: ${file.path}');
+    
+    // Run in background without blocking
+    _uploadAndProcessBackgroundAsync(file, category);
+  }
+
+  Future<void> _uploadAndProcessBackgroundAsync(File file, String category) async {
+    debugPrint('[BG] 🚀 Background async started');
+    String? itemId;
     try {
-      debugPrint('[Firebase] Starting upload...');
+      // Upload to Firebase
+      debugPrint('[BG] 📤 Starting Firebase upload...');
       final firebaseService = FirebaseWardrobeService.instance;
-      final itemId = await firebaseService.uploadItemWithPhoto(
+      itemId = await firebaseService.uploadItemWithPhoto(
         photoFile: file,
         category: category,
       );
-      debugPrint('[Firebase] Upload successful! Item ID: $itemId');
-      return itemId;
-    } catch (e) {
-      debugPrint('[Firebase] Upload error: $e');
-      rethrow;
+      debugPrint('[BG] ✅ Firebase upload complete, itemId=$itemId, itemId is not null: ${itemId != null}');
+      
+      // Wait a moment to ensure document is fully written before AI processing
+      debugPrint('[BG] ⏱️ Waiting 1000ms before AI processing...');
+      await Future.delayed(const Duration(milliseconds: 1000));
+      debugPrint('[BG] ⏱️ Wait complete');
+    } catch (e, st) {
+      debugPrint('[BG] ❌ Firebase upload failed: $e\n$st');
+      return; // Stop if upload fails
     }
-  }
 
-  // Executes Firebase upload AND AI processing in background (non-blocking)
-  void _uploadAndProcessInBackground(File file, String category) {
-    Future<void>(() async {
-      try {
-        // Upload to Firebase
-        debugPrint('[BG] Starting Firebase upload...');
-        final firebaseService = FirebaseWardrobeService.instance;
-        await firebaseService.uploadItemWithPhoto(
-          photoFile: file,
-          category: category,
-        );
-        debugPrint('[BG] Firebase upload complete');
-
-        // Refresh wardrobe from Firebase
-        debugPrint('[BG] Refreshing wardrobe...');
-        final wardrobe = Provider.of<WardrobeModel?>(context, listen: false);
-        if (wardrobe != null) {
-          await wardrobe.refreshItemsFromFirebase();
-          debugPrint('[BG] Wardrobe refreshed');
-        }
-      } catch (e) {
-        debugPrint('[BG] Firebase upload failed: $e');
-      }
-
-      try {
-        // Process image with AI
-        debugPrint('[BG] Starting AI processing...');
-        await _processAndCacheImage(file);
-        debugPrint('[BG] AI processing complete');
-      } catch (e) {
-        debugPrint('[BG] AI processing failed: $e');
-      }
-    }).ignore(); // Fire and forget
-  }
-
-  Future<void> _processAndCacheImage(File file) async {
     try {
-      debugPrint('[AI] process start for ${file.path}');
+      // Process image with AI
+      debugPrint('[BG] 🤖 Starting AI processing with itemId=$itemId...');
+      await _processAndCacheImage(file, itemId: itemId);
+      debugPrint('[BG] ✅ AI processing complete');
+      
+      // Firebase listener will automatically update the UI when AI data is saved
+    } catch (e, st) {
+      debugPrint('[BG] ❌ AI processing failed: $e\n$st');
+    }
+    
+    debugPrint('[BG] 🏁 Background async ended');
+  }
 
-      if (!Hive.isBoxOpen('ai_cache')) {
-        debugPrint('[AI] ai_cache box is not open — opening now');
-        await Hive.openBox('ai_cache');
+  Future<void> _processAndCacheImage(File file, {String? itemId}) async {
+    try {
+      debugPrint('[AI] 📸 process start for ${file.path}, itemId=$itemId');
+      
+      if (itemId == null || itemId.isEmpty) {
+        debugPrint('[AI] ⚠️ WARNING: itemId is null/empty, cannot process');
+        return;
       }
-
-      await AICache.put(file.path, {'status': 'processing'});
-      debugPrint('[AI] status set to processing for ${file.path}');
 
       File compressed;
       try {
+        debugPrint('[AI] 🗜️ Compressing image...');
         compressed = await compressImage(file);
         final size = await compressed.length();
-        debugPrint('[AI] compressed file size=$size bytes for ${file.path}');
+        debugPrint('[AI] ✅ compressed file size=$size bytes for ${file.path}');
       } catch (e, st) {
-        debugPrint('[AI] compress failed: $e\n$st');
-        await AICache.put(file.path, {
-          'status': 'error',
-          'error': 'compress_failed: $e',
-        });
+        debugPrint('[AI] ❌ compress failed: $e\n$st');
         return;
       }
 
       Map<String, dynamic> desc;
       try {
+        debugPrint('[AI] 🔍 Calling OpenAI describeClothes...');
         final ai = AIStylistService();
         desc = await ai.describeClothes(compressed);
-        debugPrint('[AI] describe result for ${file.path}: $desc');
+        debugPrint('[AI] ✅ describe result for ${file.path}: $desc');
       } catch (e, st) {
-        debugPrint('[AI] describeClothes failed: $e\n$st');
-        await AICache.put(file.path, {
-          'status': 'error',
-          'error': e.toString(),
-        });
+        debugPrint('[AI] ❌ describeClothes failed: $e\n$st');
         return;
       }
 
-      await AICache.put(file.path, {
+      final cacheData = {
         ...desc,
-        'status': 'done',
         'updated_at': DateTime.now().toIso8601String(),
-      });
-      debugPrint('[AI] saved description into cache for ${file.path}');
+      };
+      
+      debugPrint('[AI] ✅ AI processing complete for ${file.path}');
+      debugPrint('[AI] 📝 itemId=$itemId, itemId!=null=${itemId != null}, isEmpty=${itemId.isEmpty ?? true}');
+      
+      // Update Firestore with AI characteristics if itemId is available
+      if (itemId.isNotEmpty) {
+        try {
+          debugPrint('[AI] 💾 Updating Firestore document $itemId with AI data...');
+          debugPrint('[AI] 💾 Data to save: $cacheData');
+          final firebaseService = FirebaseWardrobeService.instance;
+          await firebaseService.updateItemWithAIData(itemId, cacheData);
+          debugPrint('[AI] ✅ Firestore document updated successfully');
+          debugPrint('[AI] 🔄 Stream listener should update UI automatically');
+          // Firebase listener will automatically update the UI
+        } catch (e, st) {
+          debugPrint('[AI] ❌ Failed to update Firestore: $e\n$st');
+          // Don't fail the whole process if Firestore update fails
+        }
+      } else {
+        debugPrint('[AI] ⚠️ WARNING: itemId is null or empty, skipping Firestore update');
+      }
     } catch (e, st) {
-      debugPrint('[AI] unexpected error: $e\n$st');
-      try {
-        await AICache.put(file.path, {
-          'status': 'error',
-          'error': e.toString(),
-        });
-      } catch (_) {}
+      debugPrint('[AI] ❌ unexpected error: $e\n$st');
     }
   }
 
@@ -239,12 +236,12 @@ class _AddItemScreenState extends State<AddItemScreen> {
               height: 48,
               child: ElevatedButton(
                 onPressed: _saving ? null : _saveItem,
-                child: _saving
-                    ? const CircularProgressIndicator()
-                    : const Text('Save'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF4B4CFF),
                 ),
+                child: _saving
+                    ? const CircularProgressIndicator()
+                    : const Text('Save'),
               ),
             ),
           ],

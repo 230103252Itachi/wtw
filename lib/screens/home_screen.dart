@@ -7,10 +7,9 @@ import 'package:wtw/services/location_service.dart';
 import 'package:wtw/utils/clothes_recommendation.dart';
 import 'package:wtw/screens/saved_screen.dart';
 import 'package:wtw/services/ai_stylist_service.dart';
-import 'package:wtw/services/ai_cache.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+  const HomeScreen({super.key});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -297,6 +296,9 @@ class _HomeScreenState extends State<HomeScreen> {
             final wardrobe = Provider.of<WardrobeModel>(context, listen: false);
             final ai = AIStylistService();
 
+            debugPrint('[Home] Generate Outfit button tapped');
+            debugPrint('[Home] Wardrobe items count: ${wardrobe.items.length}');
+
             if (wardrobe.items.isEmpty) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Wardrobe is empty. Add items!')),
@@ -310,31 +312,25 @@ class _HomeScreenState extends State<HomeScreen> {
               List<Map<String, dynamic>> itemsForAI = [];
 
               for (var item in wardrobe.items) {
-                final cache = await AICache.get(item.imagePath);
-
-                // Add item if it's been processed, or with minimal info if not
-                if (cache != null && cache['status'] == 'done') {
-                  itemsForAI.add({
-                    'id': item.key.toString(),
-                    'path': item.imagePath,
-                    ...cache,
-                  });
-                } else {
-                  // Fallback: add item without AI processing
-                  debugPrint('[Home] Item ${item.title} not processed yet, using fallback');
-                  itemsForAI.add({
-                    'id': item.key.toString(),
-                    'path': item.imagePath,
-                    'category': 'unknown',
-                    'colors': ['neutral'],
-                    'material': 'fabric',
-                    'style_tags': [],
-                    'pattern': 'solid',
-                    'warmth': 'moderate',
-                    'notes': '${item.title} - awaiting AI processing',
-                  });
-                }
+                // Use metadata from Firestore
+                final metadata = item.metadata ?? {};
+                
+                debugPrint('[Home] Adding item to outfit generation: id=${item.id}, title=${item.title}');
+                
+                itemsForAI.add({
+                  'id': item.id ?? 'unknown',
+                  'path': item.imagePath,
+                  'category': metadata['category'] ?? 'unknown',
+                  'colors': metadata['colors'] ?? ['neutral'],
+                  'material': metadata['material'] ?? 'fabric',
+                  'style_tags': metadata['style_tags'] ?? [],
+                  'pattern': metadata['pattern'] ?? 'solid',
+                  'warmth': metadata['warmth'] ?? 'moderate',
+                  'notes': metadata['notes'] ?? item.title,
+                });
               }
+
+              debugPrint('[Home] Total items prepared for AI: ${itemsForAI.length}');
 
               if (itemsForAI.isEmpty) {
                 setState(() => isLoading = false);
@@ -346,7 +342,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 return;
               }
 
-              final style = wardrobe.selectedStyle?.toLowerCase() ?? 'casual';
+              final style = wardrobe.selectedStyle.toLowerCase() ?? 'casual';
 
               final w = await WeatherService().getWeatherSummary();
               final weatherString = w ?? 'clear';
@@ -357,15 +353,21 @@ class _HomeScreenState extends State<HomeScreen> {
                 occasion: style,
               );
 
+              debugPrint('[Home] AI suggestion: $suggestion');
+
               final List<String> selectedIds =
                   (suggestion['outfit_items'] as List?)
                       ?.map((e) => e.toString())
                       .toList() ??
                   [];
+              
+              debugPrint('[Home] Selected IDs from AI: $selectedIds');
 
               final selectedItems = wardrobe.items.where((item) {
-                return selectedIds.contains(item.key.toString());
+                return selectedIds.contains(item.id ?? '');
               }).toList();
+
+              debugPrint('[Home] Matched items from wardrobe: ${selectedItems.length}');
 
               final notes = suggestion['notes'] ?? 'No explanation';
 
@@ -401,26 +403,34 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     TextButton(
                       onPressed: () async {
-                        final wardrobeModel = Provider.of<WardrobeModel>(
-                          context,
-                          listen: false,
-                        );
-                        final itemKeys = selectedItems
-                            .map((i) => i.key?.toString() ?? i.imagePath)
-                            .toList();
-
-                        await wardrobeModel.saveOutfit(
-                          title:
-                              'AI suggestion • ${DateTime.now().toLocal().toString().split('.')[0]}',
-                          itemKeys: itemKeys,
-                          notes: notes ?? '',
-                        );
-
-                        if (mounted) {
-                          Navigator.of(context).pop();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Outfit saved')),
+                        try {
+                          final wardrobeModel = Provider.of<WardrobeModel>(
+                            context,
+                            listen: false,
                           );
+                          final itemKeys = selectedItems
+                              .map((i) => i.id ?? '')
+                              .toList();
+
+                          await wardrobeModel.saveOutfit(
+                            title:
+                                'AI suggestion • ${DateTime.now().toLocal().toString().split('.')[0]}',
+                            itemKeys: itemKeys,
+                            notes: notes ?? '',
+                          );
+
+                          if (mounted) {
+                            Navigator.of(context).pop();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Outfit saved')),
+                            );
+                          }
+                        } catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Error: $e')),
+                            );
+                          }
                         }
                       },
                       child: const Text('Save'),

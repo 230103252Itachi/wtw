@@ -5,8 +5,7 @@ class OutfitCard extends StatelessWidget {
   final Outfit outfit;
   final VoidCallback onSave;
 
-  const OutfitCard({Key? key, required this.outfit, required this.onSave})
-    : super(key: key);
+  const OutfitCard({super.key, required this.outfit, required this.onSave});
 
   @override
   Widget build(BuildContext context) {

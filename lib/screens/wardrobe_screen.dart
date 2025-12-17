@@ -3,10 +3,9 @@ import 'package:provider/provider.dart';
 import 'package:wtw/models/wardrobe_item.dart';
 import 'package:wtw/models/wardrobe_model.dart';
 import 'package:wtw/screens/view_item_screen.dart';
-import 'package:wtw/services/ai_cache.dart';
 
 class WardrobeScreen extends StatefulWidget {
-  const WardrobeScreen({Key? key}) : super(key: key);
+  const WardrobeScreen({super.key});
 
   @override
   State<WardrobeScreen> createState() => _WardrobeScreenState();
@@ -50,6 +49,17 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
             icon: const Icon(Icons.search),
             onPressed: () {
               _showSearchDialog();
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.bug_report),
+            tooltip: 'Diagnostic',
+            onPressed: () {
+              final wardrobe = Provider.of<WardrobeModel>(context, listen: false);
+              wardrobe.diagnosticCheckFirestore();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Check logs for diagnostic output')),
+              );
             },
           ),
         ],
@@ -140,30 +150,25 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
   }
 
   Widget _buildItemCard(WardrobeItem item, WardrobeModel wardrobe) {
-    final cached = AICache.get(item.imagePath);
-
     String previewText() {
       try {
-        if (cached == null) return 'AI Description: none';
-        if (cached is String)
-          return (cached.length > 60) ? '${cached.substring(0, 60)}…' : cached;
-        if (cached is Map) {
-          final map = Map<String, dynamic>.from(cached);
-          if (map['notes'] != null && map['notes'].toString().isNotEmpty) {
-            final s = map['notes'].toString();
+        // Try to get AI description from wardrobe item metadata
+        if (item.metadata != null && item.metadata is Map) {
+          final meta = Map<String, dynamic>.from(item.metadata);
+          if (meta['notes'] != null && meta['notes'].toString().isNotEmpty) {
+            final s = meta['notes'].toString();
             return s.length > 60 ? '${s.substring(0, 60)}…' : s;
           }
-          if (map['category'] != null) return map['category'].toString();
-          if (map['style_tags'] != null &&
-              map['style_tags'] is List &&
-              (map['style_tags'] as List).isNotEmpty) {
-            return (map['style_tags'] as List).join(', ');
+          if (meta['category'] != null) return 'Category: ${meta['category']}';
+          if (meta['colors'] != null) return 'Colors: ${meta['colors']}';
+          if (meta['style_tags'] != null && meta['style_tags'] is List) {
+            return 'Style: ${(meta['style_tags'] as List).join(', ')}';
           }
-          return 'AI Description: available';
+          return 'AI processed';
         }
-        return 'AI Description: unknown format';
+        return 'Pending AI analysis...';
       } catch (e) {
-        return 'AI Description: error';
+        return 'No description';
       }
     }
 
@@ -182,7 +187,7 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
               minChildSize: 0.3,
               maxChildSize: 0.95,
               builder: (_, controller) {
-                final cachedLocal = AICache.get(item.imagePath);
+                final metadata = item.metadata;
                 return SingleChildScrollView(
                   controller: controller,
                   padding: const EdgeInsets.all(16),
@@ -215,12 +220,12 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      if (cachedLocal == null) ...[
+                      if (metadata == null) ...[
                         const Text(
-                          'Description not available yet.',
+                          'AI analysis pending or not available yet.',
                         ),
                       ] else ...[
-                        _buildDescriptionWidget(cachedLocal),
+                        _buildDescriptionWidget(metadata),
                       ],
                       const SizedBox(height: 20),
                       Row(
@@ -324,7 +329,6 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
                                 Navigator.pop(ctx);
                                 try {
                                   await wardrobe.removeItem(item);
-                                  await AICache.remove(item.imagePath);
                                   if (mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(content: Text('Item deleted')),

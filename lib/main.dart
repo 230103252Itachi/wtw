@@ -11,7 +11,6 @@ import 'package:wtw/screens/wardrobe_screen.dart';
 import 'package:wtw/screens/saved_screen.dart';
 import 'package:wtw/screens/profile_screen.dart';
 import 'package:wtw/models/wardrobe_item.dart';
-import 'package:wtw/services/ai_cache.dart';
 import 'package:wtw/screens/add_item_screen.dart';
 import 'package:wtw/services/openai_key_store.dart';
 import 'package:wtw/screens/login_screen.dart';
@@ -36,13 +35,12 @@ Future<void> main() async {
   await Hive.openBox<WardrobeItem>('wardrobeBox');
 
   await Hive.openBox('settings');
-  await AICache.init();
   await Hive.openBox('savedOutfits');
   runApp(const WhatToWearApp());
 }
 
 class WhatToWearApp extends StatelessWidget {
-  const WhatToWearApp({Key? key}) : super(key: key);
+  const WhatToWearApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -123,7 +121,7 @@ class WhatToWearApp extends StatelessWidget {
 }
 
 class MainTabs extends StatefulWidget {
-  const MainTabs({Key? key}) : super(key: key);
+  const MainTabs({super.key});
 
   @override
   State<MainTabs> createState() => _MainTabsState();
@@ -142,17 +140,8 @@ class _MainTabsState extends State<MainTabs> {
   @override
   void initState() {
     super.initState();
-    // Load items from Firebase when user enters the app
-    _loadFirebaseItems();
-  }
-
-  Future<void> _loadFirebaseItems() async {
-    try {
-      final wardrobe = Provider.of<WardrobeModel>(context, listen: false);
-      await wardrobe.loadItemsFromFirebase();
-    } catch (e) {
-      debugPrint('Error loading Firebase items: $e');
-    }
+    // Firebase listener in WardrobeModel initializes automatically
+    // No need to manually load items
   }
 
   void _onTap(int idx) {

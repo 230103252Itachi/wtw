@@ -12,7 +12,13 @@ class WardrobeItem extends HiveObject {
   @HiveField(1)
   String title;
 
-  WardrobeItem({required this.imagePath, required this.title});
+  @HiveField(2)
+  dynamic metadata; // Stores AI data from Firestore
+
+  @HiveField(3)
+  String? id; // Firebase document ID
+
+  WardrobeItem({required this.imagePath, required this.title, this.metadata, this.id});
 
   // Check if path is a URL (from Firebase) or local file path
   bool get isNetworkImage => imagePath.startsWith('http');

@@ -9,8 +9,7 @@ class ViewItemScreen extends StatefulWidget {
   final String? imagePathArg;
   final WardrobeItem? itemArg;
 
-  const ViewItemScreen({Key? key, this.imagePathArg, this.itemArg})
-    : super(key: key);
+  const ViewItemScreen({super.key, this.imagePathArg, this.itemArg});
 
   @override
   State<ViewItemScreen> createState() => _ViewItemScreenState();
