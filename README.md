@@ -1,34 +1,32 @@
-WhatToWear (WTW)
+WhatToWear (WTW) – Smart Wardrobe and Outfit Recommendation App
 
-Smart Wardrobe & Outfit Recommendation App
+WhatToWear is a mobile application built with Flutter that helps users organize their wardrobe and get outfit suggestions based on the weather and personal preferences. This project was developed as part of a Capstone Mobile App Project.
 
-WhatToWear is a Flutter mobile application that helps users manage their wardrobe and get outfit recommendations based on weather conditions and personal preferences. The project was developed as a Capstone Mobile App Project.
-
-📱 About the App
+About the App
 
 The app allows users to:
 
-store and manage their clothes in one place
+store and manage all their clothing items in one place
 
-get outfit suggestions based on current weather
+receive outfit recommendations based on current weather conditions
 
 use the app both online and offline
 
-It focuses on simplicity, usability, and real-world functionality.
+The main focus of the app is simplicity, ease of use, and practical functionality for everyday life.
 
-✨ Key Features
+Key Features
 
-Add, edit, and delete wardrobe items
+add, edit, and delete wardrobe items
 
-Upload clothing images
+upload photos of clothing
 
 AI-based outfit recommendations
 
-Real-time weather integration
+real-time weather integration
 
-Offline access with local caching
+offline access with local caching
 
-🛠️ Tech Stack
+Technology Stack
 
 Flutter (Dart)
 
@@ -42,29 +40,28 @@ Weather API
 
 Hive (local storage)
 
-🚀 Getting Started
-Prerequisites
+Getting Started
 
-Flutter SDK installed
+Before running the app, make sure you:
 
-Firebase project configured
+Install the Flutter SDK
 
-Environment Variables
+Configure a Firebase project
 
-Before running the app, create an .env file in the project root and add your API keys:
+Create a .env file in the project root and add your API keys:
 
 OPENAI_API_KEY=your_openai_api_key
 WEATHER_API_KEY=your_weather_api_key
 
-Run the App
+
+To run the app, use:
+
 flutter pub get
 flutter run
 
-📦 Project Status
+
+Project Status
 
 Version: 1.0
-
 Status: Ready for submission
-
-Purpose: Educational (Capstone Project)
-
+Purpose: Educational project (Capstone Project)
