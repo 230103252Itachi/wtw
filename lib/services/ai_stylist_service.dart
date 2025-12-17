@@ -1,8 +1,6 @@
-// lib/services/ai_stylist_service.dart
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../services/openai_key_store.dart';
 
@@ -14,7 +12,7 @@ class AIStylistService {
   Future<String> _getApiKey() async {
     final key = await OpenAIKeyStore.getKey();
     if (key == null || key.isEmpty) {
-      throw Exception('OpenAI API key not found.');
+      throw Exception('API key tapylmadi');
     }
     return key;
   }
@@ -23,181 +21,166 @@ class AIStylistService {
     File imageFile, {
     String model = 'gpt-4o-mini',
   }) async {
-    final apiKey = await _getApiKey();
+    final key = await _getApiKey();
 
-    final bytes = await imageFile.readAsBytes();
-    final base64Image = base64Encode(bytes);
-    final dataUri = 'data:image/jpeg;base64,$base64Image';
+    final imgBytes = await imageFile.readAsBytes();
+    final base64Img = base64Encode(imgBytes);
+    final imgUri = 'data:image/jpeg;base64,$base64Img';
 
-    final messages = [
+    final msgs = [
       {
         "role": "system",
-        "content":
-            "You are a precise fashion-item recognizer. Return ONLY valid JSON with keys: category, colors, material, style_tags, pattern, warmth, notes.",
+        "content": "Sen fashion tanycasy. Kiyim-kynamasy talday JSON qayt: category, colors, material, style_tags, pattern, warmth, notes.",
       },
       {
         "role": "user",
         "content": [
           {
             "type": "image_url",
-            "image_url": {"url": dataUri},
+            "image_url": {"url": imgUri},
           },
           {
             "type": "text",
-            "text":
-                "Describe this clothing item briefly and return ONLY JSON object: {category, colors, material, style_tags, pattern, warmth, notes}.",
+            "text": "Bu kiyim-kynamasyndy talday JSON: {category, colors, material, style_tags, pattern, warmth, notes}.",
           },
         ],
       },
     ];
 
-    final body = {
+    final payload = {
       "model": model,
-      "messages": messages,
+      "messages": msgs,
       "temperature": 0.0,
       "max_tokens": 300,
     };
 
-    debugPrint('[OpenAI] Sending describe request...');
-    
-    http.Response resp;
+    http.Response result;
     try {
-      final client = http.Client();
-      resp = await client.post(
+      final connection = http.Client();
+      result = await connection.post(
         Uri.parse(_baseUrl),
         headers: {
-          "Authorization": "Bearer $apiKey",
+          "Authorization": "Bearer $key",
           "Content-Type": "application/json",
         },
-        body: jsonEncode(body),
+        body: jsonEncode(payload),
       ).timeout(
         const Duration(seconds: 30),
         onTimeout: () {
-          debugPrint('[OpenAI] Request timeout after 30 seconds');
-          throw TimeoutException('OpenAI API timeout');
+          throw TimeoutException('API timeout');
         },
       );
-      client.close();
-    } on TimeoutException catch (e) {
-      debugPrint('[OpenAI] Timeout error: $e');
-      return {
-        'status': 'error',
-        'error': 'OpenAI timeout (took longer than 30 seconds)',
-      };
-    } catch (e) {
-      debugPrint('[OpenAI] Connection error: $e');
-      return {
-        'status': 'error',
-        'error': 'Connection error: $e',
-      };
-    }
-
-    debugPrint('[OpenAI] describe status=${resp.statusCode}');
-    debugPrint(
-      '[OpenAI] describe body (prefix)=${resp.body.substring(0, resp.body.length.clamp(0, 1200))}',
-    );
-
-    if (resp.statusCode != 200) {
-      debugPrint('[OpenAI] HTTP error ${resp.statusCode}: ${resp.body}');
+      connection.close();
+    } on TimeoutException catch (_) {
       return {
         'category': 'Unknown',
         'colors': ['neutral'],
         'material': 'Unknown',
-        'style_tags': ['unprocessed'],
+        'style_tags': [],
         'pattern': 'Unknown',
         'warmth': 'Unknown',
-        'notes': 'AI processing failed (HTTP ${resp.statusCode})',
+        'notes': 'timeout',
+      };
+    } catch (e) {
+      return {
+        'status': 'error',
+        'error': e.toString(),
+      };
+    }
+
+    if (result.statusCode != 200) {
+      return {
+        'category': 'Unknown',
+        'colors': ['neutral'],
+        'material': 'Unknown',
+        'style_tags': [],
+        'pattern': 'Unknown',
+        'warmth': 'Unknown',
+        'notes': 'HTTP ${result.statusCode}',
       };
     }
 
     try {
-      final decoded = jsonDecode(resp.body);
-      final content = decoded["choices"]?[0]?["message"]?["content"] as String?;
+      final resp = jsonDecode(result.body);
+      final text = resp["choices"]?[0]?["message"]?["content"] as String?;
       
-      if (content == null) {
-        debugPrint('[OpenAI] Empty content from OpenAI. Full response: ${resp.body}');
+      if (text == null || text.isEmpty) {
         return {
           'category': 'Unknown',
           'colors': ['neutral'],
           'material': 'Unknown',
-          'style_tags': ['unprocessed'],
+          'style_tags': [],
           'pattern': 'Unknown',
           'warmth': 'Unknown',
-          'notes': 'AI returned empty response',
+          'notes': 'empty',
         };
       }
 
-      String cleaned = content.replaceAll(RegExp(r'```(?:json)?'), '').trim();
-      final idx = cleaned.indexOf('{');
-      if (idx > 0) cleaned = cleaned.substring(idx);
+      var clean = text.replaceAll(RegExp(r'```(?:json)?'), '').trim();
+      final start = clean.indexOf('{');
+      if (start > 0) clean = clean.substring(start);
 
-      debugPrint('[OpenAI] Cleaned content: $cleaned');
-      
       try {
-        final parsed = jsonDecode(cleaned);
-        if (parsed is Map<String, dynamic>) {
-          debugPrint('[OpenAI] Successfully parsed AI response');
-          return parsed;
+        final data = jsonDecode(clean);
+        if (data is Map<String, dynamic>) {
+          return data;
         } else {
-          debugPrint('[OpenAI] Parsed response is not a map: $parsed');
           return {
             'category': 'Unknown',
             'colors': ['neutral'],
             'material': 'Unknown',
-            'style_tags': ['unprocessed'],
+            'style_tags': [],
             'pattern': 'Unknown',
             'warmth': 'Unknown',
-            'notes': 'AI returned unexpected format',
+            'notes': 'invalid format',
           };
         }
-      } catch (parseErr) {
-        debugPrint('[OpenAI] JSON parse error: $parseErr. Cleaned string was: $cleaned');
+      } catch (e) {
         return {
           'category': 'Unknown',
           'colors': ['neutral'],
           'material': 'Unknown',
-          'style_tags': ['unprocessed'],
+          'style_tags': [],
           'pattern': 'Unknown',
           'warmth': 'Unknown',
-          'notes': 'AI returned invalid JSON',
+          'notes': 'json error',
         };
       }
     } catch (e) {
-      debugPrint('[OpenAI] Unexpected error while parsing: $e, response body: ${resp.body}');
       return {
         'category': 'Unknown',
         'colors': ['neutral'],
         'material': 'Unknown',
-        'style_tags': ['unprocessed'],
+        'style_tags': [],
         'pattern': 'Unknown',
         'warmth': 'Unknown',
-        'notes': 'AI processing error',
+        'notes': 'parse error',
       };
     }
   }
 
   Future<Map<String, dynamic>> generateOutfitFromDescriptions({
-    required List<Map<String, dynamic>> wardrobe,
-    required String weather,
-    required String occasion,
+    required List<Map<String, dynamic>> garments,
+    required String clima,
+    required String event,
   }) async {
     final apiKey = await _getApiKey();
 
-    final system = '''
-You are an expert fashion stylist. 
-Create the best matching outfit using the user's wardrobe items.
+    final sys = '''
+Sen kostumer stylisti. 
+User kiyim-kynamalary ushyn eng jaqsy komplektty zhasay.
 
-Wardrobe items come with:
-- AI descriptions (category, color, material, warmth, notes)
-- id (must be used in output)
+Kiyim-kynamalary:
+- AI ta'rifly (category, color, material, warmth, notes)
+- id (natyjese barylyryluy kerek)
 
-Weather: $weather
-Occasion: $occasion
+Aua-raiyy: $clima
+Shara: $event
 
-Return STRICT JSON:
+JSON qayt:
 {
   "outfit_items": ["id1","id2"],
-  "notes": "short text",
+  "notes": "text",
   "alternatives": [["id3"],["id4","id2"]]
 }
 ''';
@@ -205,8 +188,8 @@ Return STRICT JSON:
     final body = {
       "model": "gpt-4o-mini",
       "messages": [
-        {"role": "system", "content": system},
-        {"role": "user", "content": jsonEncode(wardrobe)},
+        {"role": "system", "content": sys},
+        {"role": "user", "content": jsonEncode(garments)},
       ],
       "temperature": 0.4,
       "max_tokens": 450,
@@ -222,14 +205,13 @@ Return STRICT JSON:
     );
 
     if (resp.statusCode != 200) {
-      throw Exception("AI error ${resp.statusCode}: ${resp.body}");
+      throw Exception("API error: ${resp.statusCode}");
     }
 
-    final raw = jsonDecode(resp.body);
-    String content = raw["choices"][0]["message"]["content"];
+    final rawData = jsonDecode(resp.body);
+    var output = rawData["choices"][0]["message"]["content"];
+    output = output.replaceAll("```json", "").replaceAll("```", "");
 
-    content = content.replaceAll("```json", "").replaceAll("```", "");
-
-    return jsonDecode(content);
+    return jsonDecode(output);
   }
 }

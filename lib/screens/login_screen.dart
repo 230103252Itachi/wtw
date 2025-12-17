@@ -45,7 +45,6 @@ class _LoginScreenState extends State<LoginScreen> {
           _emailController.text.trim(),
           _passwordController.text,
         );
-        // Send email verification
         await _authService.sendEmailVerification();
         
         ScaffoldMessenger.of(context).showSnackBar(
@@ -56,8 +55,6 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       }
 
-      // StreamBuilder в main.dart автоматически переключится на MainTabs
-      // Не нужно навигировать вручную
     } on FirebaseAuthException catch (e) {
       setState(() {
         _errorMessage = e.message ?? 'Authentication failed';
@@ -236,7 +233,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 48),
 
-                    // Email Field
                     TextFormField(
                       controller: _emailController,
                       decoration: InputDecoration(

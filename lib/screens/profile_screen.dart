@@ -42,8 +42,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       await AuthService.instance.logout();
     } catch (_) {}
-    // StreamBuilder в main.dart автоматически переключится на LoginScreen
-    // Просто закрыть loading
     if (mounted) {
       setState(() {
         _isLoading = false;
@@ -101,7 +99,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // User Info Section
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -177,7 +174,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            // Settings Section
             Text(
               'Settings',
               style: TextStyle(

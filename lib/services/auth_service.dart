@@ -22,7 +22,6 @@ class AuthService {
 
   Future<void> logout() => _auth.signOut();
 
-  // Simple profile storage in Hive - keeps existing app behavior
   Future<void> saveGender(String email, String gender) async {
     // Try to save to Firestore under user's uid if available, fallback to Hive
     final user = _auth.currentUser;
@@ -51,7 +50,6 @@ class AuthService {
   }
 
   Future<String?> getGender(String email) async {
-    // Check Firestore first if user logged in
     final user = _auth.currentUser;
     if (user != null) {
       try {

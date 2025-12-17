@@ -42,11 +42,7 @@ class SavedScreen extends StatelessWidget {
                 separatorBuilder: (_, __) => const SizedBox(height: 12),
                 itemBuilder: (ctx, idx) {
                   final outfit = saved[idx];
-                  // Resolve real WardrobeItem objects by keys (this uses your provider helper)
-                  debugPrint('[SavedScreen] Loading outfit: ${outfit.title}');
-                  debugPrint('[SavedScreen] outfit.itemKeys: ${outfit.itemKeys}');
                   final items = wardrobe.getItemsByKeys(outfit.itemKeys);
-                  debugPrint('[SavedScreen] Resolved ${items.length} items for outfit');
 
                   return GestureDetector(
                     onTap: () => _openOutfitDetails(context, outfit, items),
@@ -208,7 +204,7 @@ class SavedScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              it.title ?? 'Item',
+                              it.title,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -237,11 +233,10 @@ class SavedScreen extends StatelessWidget {
 
 class _StackedThumbs extends StatelessWidget {
   final List<WardrobeItem> items;
-  const _StackedThumbs({super.key, required this.items});
+  const _StackedThumbs({required this.items});
 
   @override
   Widget build(BuildContext context) {
-    debugPrint('[StackedThumbs] Building with ${items.length} items');
     final maxShow = SavedScreen.maxThumbs;
     final show = items.length < maxShow ? items.length : maxShow;
     final thumbs = items.take(show).toList();

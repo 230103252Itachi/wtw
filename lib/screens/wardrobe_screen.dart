@@ -152,7 +152,6 @@ class _WardrobeScreenState extends State<WardrobeScreen> {
   Widget _buildItemCard(WardrobeItem item, WardrobeModel wardrobe) {
     String previewText() {
       try {
-        // Try to get AI description from wardrobe item metadata
         if (item.metadata != null && item.metadata is Map) {
           final meta = Map<String, dynamic>.from(item.metadata);
           if (meta['notes'] != null && meta['notes'].toString().isNotEmpty) {

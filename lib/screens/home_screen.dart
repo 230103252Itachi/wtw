@@ -296,9 +296,6 @@ class _HomeScreenState extends State<HomeScreen> {
             final wardrobe = Provider.of<WardrobeModel>(context, listen: false);
             final ai = AIStylistService();
 
-            debugPrint('[Home] Generate Outfit button tapped');
-            debugPrint('[Home] Wardrobe items count: ${wardrobe.items.length}');
-
             if (wardrobe.items.isEmpty) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Wardrobe is empty. Add items!')),
@@ -312,10 +309,7 @@ class _HomeScreenState extends State<HomeScreen> {
               List<Map<String, dynamic>> itemsForAI = [];
 
               for (var item in wardrobe.items) {
-                // Use metadata from Firestore
                 final metadata = item.metadata ?? {};
-                
-                debugPrint('[Home] Adding item to outfit generation: id=${item.id}, title=${item.title}');
                 
                 itemsForAI.add({
                   'id': item.id ?? 'unknown',
@@ -330,8 +324,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 });
               }
 
-              debugPrint('[Home] Total items prepared for AI: ${itemsForAI.length}');
-
               if (itemsForAI.isEmpty) {
                 setState(() => isLoading = false);
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -342,18 +334,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 return;
               }
 
-              final style = wardrobe.selectedStyle.toLowerCase() ?? 'casual';
+              final style = wardrobe.selectedStyle.toLowerCase();
 
               final w = await WeatherService().getWeatherSummary();
               final weatherString = w ?? 'clear';
 
               final suggestion = await ai.generateOutfitFromDescriptions(
-                wardrobe: itemsForAI,
-                weather: weatherString,
-                occasion: style,
+                garments: itemsForAI,
+                clima: weatherString,
+                event: style,
               );
-
-              debugPrint('[Home] AI suggestion: $suggestion');
 
               final List<String> selectedIds =
                   (suggestion['outfit_items'] as List?)
@@ -361,13 +351,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       .toList() ??
                   [];
               
-              debugPrint('[Home] Selected IDs from AI: $selectedIds');
-
               final selectedItems = wardrobe.items.where((item) {
                 return selectedIds.contains(item.id ?? '');
               }).toList();
-
-              debugPrint('[Home] Matched items from wardrobe: ${selectedItems.length}');
 
               final notes = suggestion['notes'] ?? 'No explanation';
 

@@ -20,7 +20,6 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
 
-  // Initialize Firebase
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
@@ -140,8 +139,6 @@ class _MainTabsState extends State<MainTabs> {
   @override
   void initState() {
     super.initState();
-    // Firebase listener in WardrobeModel initializes automatically
-    // No need to manually load items
   }
 
   void _onTap(int idx) {
