@@ -1,10 +1,4 @@
-// GENERATED CODE - DO NOT MODIFY BY HAND
-
 part of 'wardrobe_item.dart';
-
-// **************************************************************************
-// TypeAdapterGenerator
-// **************************************************************************
 
 class WardrobeItemAdapter extends TypeAdapter<WardrobeItem> {
   @override
